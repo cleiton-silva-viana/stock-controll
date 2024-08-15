@@ -46,7 +46,7 @@ func Test_NewEmail_WithInvalidEmailFormat(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			result, err := NewEmail(test.email)
 
-			// Arrange
+			// Assert
 			assert.Nil(t, result)
 			assert.ErrorIs(t, err, errors.InvalidEmailFormat)
 		})
