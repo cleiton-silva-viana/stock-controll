@@ -9,6 +9,10 @@ type Email struct {
 	email string
 }
 
+func (e *Email) GetEmail() string {
+	return e.email
+}
+
 func NewEmail(email string) (*Email, error) {
 	err := validateEmailFormat(email)
 	if err != nil {

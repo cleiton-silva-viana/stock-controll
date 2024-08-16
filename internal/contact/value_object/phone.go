@@ -1,6 +1,7 @@
 package value_object
 
 import (
+	"fmt"
 	"regexp"
 	"stock-controll/internal/contact/errors"
 	"strconv"
@@ -11,6 +12,10 @@ type Phone struct {
 	areaCode int
 	number   int
 	device   string
+}
+
+func (p *Phone) GetPhone() string {
+	return fmt.Sprintf("(%d) %d", p.areaCode, p.number)
 }
 
 func NewPhone(phone string) (*Phone, error) {

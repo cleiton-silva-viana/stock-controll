@@ -1,4 +1,4 @@
-package entity
+package contact_entity
 
 import (
 	"stock-controll/internal/contact/value_object"
