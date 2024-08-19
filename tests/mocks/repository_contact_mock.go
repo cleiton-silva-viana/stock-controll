@@ -1,8 +1,8 @@
 package mocks
 
 import (
-	contact_entity "stock-controll/internal/contact/entity"
-	"stock-controll/internal/contact/value_object"
+	"stock-controll/internal/domain/entity"
+	"stock-controll/internal/domain/value_object"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -11,7 +11,7 @@ type ContactRepositoryMock struct {
 	mock.Mock
 }
 
-func (c *ContactRepositoryMock) Save(contact *contact_entity.Contact) error {
+func (c *ContactRepositoryMock) Save(contact *entity.Contact) error {
 	args := c.MethodCalled("Save")
 	return args.Error(0)
 }

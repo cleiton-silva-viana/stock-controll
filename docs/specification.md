@@ -7,6 +7,7 @@
     - The system to have: name, age, gender, email and cell number
     - The password to have chars, numbers and special characters
     - The password to have than 8 characters
+    - The password to have maximum of de 24 characters
     - Cell phone and email to have unique in system
 - [] Employee login
     - The employee to have provide email and password
