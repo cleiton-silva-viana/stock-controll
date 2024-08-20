@@ -2,7 +2,7 @@ package value_object
 
 import (
 	"strings"
-	
+
 	"stock-controll/internal/domain/failure"
 )
 
@@ -10,28 +10,29 @@ type Name struct {
 	name string
 }
 
-func NewName(name string) (*Name, error) {
+func NewName(name, fieldName string, maxLength int) (*Name, error) {
 	nameParsed := strings.Trim(name, " ")
 
 	if nameParsed == "" {
-		return nil, failure.NameIsEmpty
+		return nil, failure.NameIsEmpty(fieldName)
 	}
 
-	if len(nameParsed) < 3 {
-		return nil, failure.NameIsShort
+	const MIN_VALUE = 3
+	if len(nameParsed) < MIN_VALUE {
+		return nil, failure.NameIsShort(fieldName, MIN_VALUE)
 	}
 
-	if len(nameParsed) > 20 {
-		return nil, failure.NameIsLong
+	if len(nameParsed) > maxLength {
+		return nil, failure.NameIsLong(fieldName, maxLength)
 	}
 
 	if ContainsNumbers(name) {
-		return nil, failure.NameWithInvalidChars
+		return nil, failure.NameWithNumber(fieldName)
 	}
 
-	nameWithotSpaces := strings.ReplaceAll(name, " ", "")
-	if ContainsSpecialChars(nameWithotSpaces) {
-		return nil, failure.NameWithInvalidChars
+	nameWithOutSpaces := strings.ReplaceAll(name, " ", "")
+	if ContainsSpecialChars(nameWithOutSpaces) {
+		return nil, failure.NameWithInvalidChars(fieldName)
 	}
 
 	return &Name{

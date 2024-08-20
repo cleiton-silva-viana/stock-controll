@@ -13,7 +13,7 @@ func NewContact(email, phone string) (*Contact, []error) {
 
 	userEmail, err := value_object.NewEmail(email)
 	if err != nil {
-			errorsList = append(errorsList, err)
+		errorsList = append(errorsList, err)
 	}
 
 	userPhone, err := value_object.NewPhone(phone)
@@ -26,7 +26,7 @@ func NewContact(email, phone string) (*Contact, []error) {
 	}
 
 	return &Contact{
-		Id: 0,
+		Id:    0,
 		Email: *userEmail,
 		Phone: *userPhone,
 	}, nil

@@ -1,17 +1,53 @@
 package failure
 
-var NameIsShort = NewFieldError("name",
-	"the name cannot contain less than 3 letters",
-	"Check if name is correct")
+import "fmt"
 
-var NameIsLong = NewFieldError("name",
-	"the name cannot contain more than 20 chars",
-	"Check if name is correct")
+func NameIsShort(fieldName string, minimunLength int) error {
+	return &Field{
+		Field: fieldName,
+		Description: Description{
+			Message:  fmt.Sprintf("the %s cannot contain less than %d letters", fieldName, minimunLength),
+			Solution: fmt.Sprintf("Check if %s is correct", fieldName),
+		},
+	}
+}
 
-var NameWithInvalidChars = NewFieldError("name",
-	"the name cannot contains number or special characters",
-	"Check if name is correct")
+func NameIsLong(fieldName string, maxLength int) error {
+	return &Field{
+		Field: fieldName,
+		Description: Description{
+			Message:  fmt.Sprintf("the %s cannot contain more than %d chars", fieldName, maxLength),
+			Solution: fmt.Sprintf("Check if %s is correct", fieldName),
+		},
+	}
+}
 
-var NameIsEmpty = NewFieldError("name",
-	"the name is empty",
-	"Check if name is correct")
+func NameIsEmpty(fieldName string) error {
+	return &Field{
+		Field: fieldName,
+		Description: Description{
+			Message:  fmt.Sprintf("the %s is empty", fieldName),
+			Solution: fmt.Sprintf("Check if %s is correct", fieldName),
+		},
+	}
+}
+
+func NameWithInvalidChars(fieldName string) error {
+	return &Field{
+		Field: fieldName,
+		Description: Description{
+			Message:  fmt.Sprintf("the %s cannot contains special characters", fieldName),
+			Solution: fmt.Sprintf("Check if %s is correct", fieldName),
+		},
+	}
+}
+
+func NameWithNumber(fieldName string) error {
+	return &Field{
+		Field: fieldName,
+		Description: Description{
+			Message:  fmt.Sprintf("the %s cannot contains numbers", fieldName),
+			Solution: fmt.Sprintf("Check if %s is correct", fieldName),
+		},
+	}
+}

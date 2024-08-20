@@ -1,6 +1,5 @@
 package failure
 
-
 var EmailWithInvalidFormat = &Field{
 	Field: "email",
 	Description: Description{

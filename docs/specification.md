@@ -3,12 +3,12 @@
 ## Features
 
 ### All Employees 
-- [] Registrer new employee
-    - The system to have: name, age, gender, email and cell number
-    - The password to have chars, numbers and special characters
-    - The password to have than 8 characters
-    - The password to have maximum of de 24 characters
-    - Cell phone and email to have unique in system
+- [] Registrer new user
+    - [x] The system to have: name, age, gender, email and cell number
+    - [x] The password to have chars, numbers and special characters
+    - [x] The password to have than 8 characters
+    - [x] The password to have maximum of de 24 characters
+    - [] Cell phone and email to have unique in system
 - [] Employee login
     - The employee to have provide email and password
     - Maximun of 3 attemps
@@ -18,7 +18,7 @@
 - [] History of actions in system
 
 ### Only by resouce humans
-- [] Delete employees account
+- [] Delete user account
     - If employee data for disabled than more 30 days
     - [] Logs to register employee deletion
 - [] Get employee datas
@@ -36,10 +36,16 @@
 
 ### Only by buyer employee
 - [] Register new manufacturer
+    - [] name
+    - [] cnpj
+    - [] category
+    - [] contact
+    - [] devolution policies
     - [] Logs to register datas of manufacturer created
 - [] Alter manufacturer datas
     - [] Logs to register datas updates manufacturer 
 - [] Register new product
+    - [] product have: name, id manufacturer, id category, bar code, 
     - [] Logs to register datas of products created 
 - [] Remove product
     - [] Logs to register datas of products removed

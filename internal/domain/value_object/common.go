@@ -2,6 +2,7 @@ package value_object
 
 import (
 	"regexp"
+	"time"
 )
 
 func ContainsSpecialChars(word string) bool {
@@ -27,4 +28,13 @@ func ContainsLowerCaseLetters(word string) bool {
 func ContainsUpperCaseLetters(word string) bool {
 	re := regexp.MustCompile(`[A-Z]`)
 	return re.MatchString(word)
+}
+
+func DateFormatIsValid(date string) (bool, *time.Time) {
+	layout := "2006-01-02"
+	dateTime, err := time.Parse(layout, date)
+	if err != nil {
+		return false, nil
+	}
+	return true, &dateTime
 }
