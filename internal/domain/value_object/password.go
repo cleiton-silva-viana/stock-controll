@@ -1,10 +1,11 @@
-package value_object
+package valueobject
 
 import (
 	"crypto/rand"
 
 	"stock-controll/internal/domain/failure"
-	"stock-controll/internal/domain/adapter"
+	"stock-controll/internal/domain/validation"
+	"stock-controll/internal/presentation/adapter"
 )
 
 type Password struct {
@@ -13,31 +14,31 @@ type Password struct {
 }
 
 func NewPassword(password string) (*Password, error) {
-	const MIN_LENGTH = 8
-	const MAX_LENGTH = 24
+	const minLength = 8
+	const maxLength = 24
 
-	if len(password) < MIN_LENGTH {
-		return nil, failure.PasswordIsShort
+	if len(password) < minLength {
+		return nil, failure.PasswordIsShort(minLength)
 	}
 
-	if len(password) > MAX_LENGTH {
-		return nil, failure.PasswordIsLong
+	if len(password) > maxLength {
+		return nil, failure.PasswordIsLong(maxLength)
 	}
 
-	if !ContainsLowerCaseLetters(password) {
+	if !validation.ContainsLowerCaseLetters(password) {
 		return nil, failure.PasswordNotContainsLowerCases
 	}
 
-	if !ContainsUpperCaseLetters(password) {
+	if !validation.ContainsUpperCaseLetters(password) {
 		return nil, failure.PasswordNotContainsUpperCases
 	}
 
-	if !ContainsNumbers(password) {
-		return nil, failure.PasswordNotContainsNumbers
+	if !validation.ContainsNumbers(password) {
+		return nil, failure.FieldWithoutNumber("password")
 	}
 
-	if !ContainsSpecialChars(password) {
-		return nil, failure.PasswordNotContainsSpecialChars
+	if !validation.ContainsSpecialChars(password) {
+		return nil, failure.FieldWithoutSpecialChars("password")
 	}
 
 	salt, err := generateSalt(24)
@@ -51,6 +52,14 @@ func NewPassword(password string) (*Password, error) {
 		password_salt:   salt,
 		password_hashed: []byte(passwordHarshed),
 	}, nil
+}
+
+func (p *Password) GetPasswordHash() []byte {
+	return p.password_hashed
+}
+
+func (p *Password) GetPasswordSalt() []byte {
+	return p.password_salt
 }
 
 func generateSalt(length int) ([]byte, error) {

@@ -1,4 +1,4 @@
-package value_object
+package valueobject
 
 import (
 	"regexp"
@@ -15,7 +15,7 @@ type CNPJ struct {
 func NewCNPJ(cnpj string) (*CNPJ, error) {
 	isValidFormat := validateFormat(cnpj)
 	if !isValidFormat {
-		return nil, failure.CPNJWithInvalidFormat
+		return nil, failure.FieldWithInvalidFormat("cnpj", "XX.XXX.XXX/0001-XX")
 	}
 	
 	var CNPJ_digits = getDigits(cnpj)

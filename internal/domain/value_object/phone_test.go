@@ -1,81 +1,76 @@
-package value_object
+package valueobject
 
 import (
 	"testing"
-	
+
 	"stock-controll/internal/domain/failure"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_NewPhone_WithValidPhone(t *testing.T) {
-	// arrange
-	tests := []struct {
-		name   string
-		device string
-		number string
-	}{
-		{name: "landline number", device: "landline", number: "(21) 4002-8922"},
-		{name: "cellphone number", device: "cellphone", number: "(21) 99314-3214"},
+func Test_NewPhone(t *testing.T) {
+	// Assert
+	tests := []test{
+		{
+			test_description: "Valid number - landline",
+			field:            "(21) 4002-8922",
+			want_error:       false,
+		},
+		{test_description: "Valid number - cellphone",
+			field:      "(21) 99314-3214",
+			want_error: false,
+		},
+		{
+			test_description: "Invalid number - empty field", 
+			field: "     ", 
+			want_error: true, 
+			expected_error: failure.PhoneWithInvalidLength,
+		},
+		{
+			test_description: "Invalid number - without area code", 
+			field: "219269-82225", 
+			want_error: true, 
+			expected_error: failure.PhoneWithoutAreaCode,
+		},
+		{
+			test_description: "Invalid number - contains letters", 
+			field: "(21) 4002-8922a", 
+			want_error: true, 
+			expected_error: failure.PhoneWithLetters,
+		},
+		{
+			test_description: "Invalid number - contains special characters", 
+			field: "(21) 4002-8922#", 
+			want_error: true, 
+			expected_error: failure.FieldWithSpecialChars("phone"),
+		},
+		{
+			test_description: "Invalid number - less than 10 digits", 
+			field: "(21) 4002-892", 
+			want_error: true, 
+			expected_error: failure.PhoneWithInvalidLength,
+		},
+		{
+			test_description: "Invalid number - long than 11 digits", 
+			field: "(21) 40028-23842",
+			want_error: true, 
+			expected_error: failure.PhoneWithInvalidLength,
+		},
 	}
 
 	// Act
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			result, err := NewPhone(test.number)
+	for _, tt := range tests {
+		t.Run(tt.test_description, func(t *testing.T) {
+			phone, err := NewPhone(tt.field)
 
-			// Assert
-			assert.Nil(t, err)
-			assert.Equal(t, test.device, result.device)
+			// Arrange
+			if tt.want_error {
+				assert.Nil(t, phone)
+				assert.Equal(t, tt.expected_error, err)
+			} else {
+				assert.Nil(t, err)
+				assert.IsType(t, Phone{}, *phone)
+			}
 		})
 	}
-}
-
-func Test_NewPhone_PhoneWithoutAreaCode_MustReturnAreacodeError(t *testing.T) {
-	// Arrange
-	phone := "219269-82225"
-
-	// Act
-	result, err := NewPhone(phone)
-
-	// Assert
-	assert.Nil(t, result)
-	assert.ErrorIs(t, err, failure.PhoneWithoutAreaCode)
-}
-
-func Test_NewPhone_PhoneWithLetters_MustReturnErrorInvalidFormatError(t *testing.T) {
-	// Arrange
-	phone := "(21) 4002-8922a"
-
-	// Act
-	result, err := NewPhone(phone)
-
-	// Assert
-	assert.Nil(t, result)
-	assert.ErrorIs(t, err, failure.PhoneWithLetters)
-}
-
-func Test_NewPhone_PhoneWithSpecialChars_MustReturnErrorSpecialCharsError(t *testing.T) {
-	// Arrange
-	phone := "(21) 4002-8922#"
-
-	// Act
-	result, err := NewPhone(phone)
-
-	// Assert
-	assert.Nil(t, result)
-	assert.NotNil(t, err)
-	assert.ErrorIs(t, err, failure.PhoneWithSpecialCharacters)
-}
-
-func Test_NewPhone_PhoneWithInvalidLength_MustReturnErrorLength(t *testing.T) {
-	// Arrange
-	phone := "(21) 40028-23842"
-
-	// Act
-	result, err := NewPhone(phone)
-
-	// Assert
-	assert.Nil(t, result)
-	assert.ErrorIs(t, err, failure.PhoneWithInvalidLength)
 }

@@ -1,9 +1,10 @@
-package value_object
+package valueobject
 
 import (
 	"fmt"
 	"regexp"
 	"stock-controll/internal/domain/failure"
+	"stock-controll/internal/domain/validation"
 	"strconv"
 	"strings"
 )
@@ -19,7 +20,11 @@ func (p *Phone) GetPhone() string {
 }
 
 func NewPhone(phone string) (*Phone, error) {
-	if ContainsLetters(phone) {
+	if strings.Trim(phone, " ") == "" {
+		return nil, failure.PhoneWithInvalidLength
+	}
+
+	if validation.ContainsLetters(phone) {
 		return nil, failure.PhoneWithLetters
 	}
 
@@ -30,10 +35,10 @@ func NewPhone(phone string) (*Phone, error) {
 
 	phoneParsed := removeSpecialCharsOfPhone(phone)
 	phoneParsed = strings.ReplaceAll(phoneParsed, " ", "")
-	if ContainsSpecialChars(phoneParsed) {
-		return nil, failure.PhoneWithSpecialCharacters
+	if validation.ContainsSpecialChars(phoneParsed) {
+		return nil, failure.FieldWithSpecialChars("phone")
 	}
-	
+
 	device := getDevice(phone)
 	if device == "unknow" {
 		return nil, failure.PhoneWithInvalidLength

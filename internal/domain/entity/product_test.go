@@ -1,152 +1,148 @@
 package entity
 
 import (
-	"stock-controll/internal/domain/failure"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-type product_datas struct {
-	name           string
-	description    string
-	barcode        string
-	brandID        int
-	categoryID     int
-	manufacturerID int
-}
-
-type tests_product_field struct {
-	test_descrition string
-	product_datas
-	new_value_field string
-	error_expected          error
-	error_quantity_expected int
-}
-
-var product = product_datas{
-	name:           "Coca Cola",
-	description:    "Refrigerante de cola, 2 litros",
-	barcode:        "7891234567890",
-	brandID:        1,
-	categoryID:     2,
-	manufacturerID: 3,
-}
-
-func Test_NewProduct_MustReturnAProduct(t *testing.T) {
+func Test_NewProduct(t *testing.T) {
 	// Arrange
-	name := "cheetos"
-	description := "A cookie cheezze"
-	barcode := "265463113564"
-	categoryID := 3
-	manufacturerID := 1
+	type product struct {
+		name           string
+		description    string
+		barcode        string
+		brandID        int
+		categoryID     int
+		manufacturerID int
+	}
 
-	// Act
-	productBuilder := NewProductBuilder()
-	product, err := productBuilder.SetName(name).
-		SetDescription(description).
-		SetBarcode(barcode).
-		SetCategoryID(categoryID).
-		SetManufacturerID(manufacturerID).
-		Build()
-
-	// Assert
-	assert.Nil(t, err)
-	assert.IsType(t, Product{}, *product)
-}
-
-func Test_NewProduct_TestErrorsFieldName(t *testing.T) {
-	// Arrange
-	tests := []tests_product_field{
+	tests := []test[product]{
 		{
-			test_descrition: "name with longer than 25 characters",
-			new_value_field: "Mindful Moments: Your Daily Oasis for Calm and Focus",
-			product_datas:  product,
-			error_expected: failure.NameIsLong("name", 25),
+			description: "Valid product - must return a product entity",
+			fields: product{
+				name:           "cheetos",
+				description:    "A cookie cheezze",
+				barcode:        "265463113564",
+				brandID:        1,
+				categoryID:     1,
+				manufacturerID: 1,
+			},
+			wantError:    false,
 		},
 		{
-			test_descrition: "name with less than 2 characters",
-			new_value_field: "a", 
-			product_datas: product, 
-			error_expected: failure.NameIsShort("name", 2),
+			description: "Invalid product - invalid product name, 1 error expected",
+			fields: product{
+				name:           "Wireless Noise-Canceling Headphones",
+				description:    "The SmartTech Pro Watch is the ultimate companion for you.",
+				barcode:        "4006381333931",
+				brandID:        1,
+				categoryID:     1,
+				manufacturerID: 1,
+			},
+			wantError:              true,
+			errorQuantityExpected: 1,
 		},
 		{
-			test_descrition: "empyt name",
-			new_value_field: "", 
-			product_datas: product, 
-			error_expected: failure.NameIsEmpty("name"),
+			description: "Invalid product - invalid product description, 1 error expected",
+			fields: product{
+				name:           "Eco-Friendly Water Bottle",
+				description:    "                                 ",
+				barcode:        "4006381333931",
+				brandID:        1,
+				categoryID:     1,
+				manufacturerID: 1,
+			},
+			wantError:              true,
+			errorQuantityExpected: 1,
 		},
 		{
-			test_descrition: "name with special chars",
-			new_value_field: "Behavio@$", 
-			product_datas: product, error_expected: 
-			failure.NameWithInvalidChars("name"),
+			description: "Invalid product - invalid product barcode, 1 error expected",
+			fields: product{
+				name:           "Eco-Friendly Water Bottle",
+				description:    "Experience immersive sound with our Wireless Noise-Canceling Headphones",
+				barcode:        "4006381333931a",
+				brandID:        1,
+				categoryID:     1,
+				manufacturerID: 1,
+			},
+			wantError:              true,
+			errorQuantityExpected: 1,
+		},
+		{
+			description: "Invalid product - invalid manufacturer id & brand id, 2 errors are expected",
+			fields: product{
+				name:           "Eco-Friendly Water Bottle",
+				description:    "Experience immersive sound with our Wireless Noise-Canceling Headphones",
+				barcode:        "4006381333931",
+				brandID:        -1,
+				categoryID:     2,
+				manufacturerID: 1000000,
+			},
+			wantError:              true,
+			errorQuantityExpected: 2,
+		},
+		{
+			description: "Invalid product - invalid manufacturer, category and brand id, 3 errors are expected",
+			fields: product{
+				name:           "Eco-Friendly Water Bottle",
+				description:    "Experience immersive sound with our Wireless Noise-Canceling Headphones",
+				barcode:        "4006381333931",
+				brandID:        -1111,
+				categoryID:     -200000,
+				manufacturerID: 10000000,
+			},
+			wantError:              true,
+			errorQuantityExpected: 3,
+		},
+		{
+			description: "Invalid product - invalid name, description and barcode, 3 errors are expected",
+			fields: product{
+				name:           "Eco-Friendly Water Bottle$$$$",
+				description:    "Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones ",
+				barcode:        "400638133393&8",
+				brandID:        1021,
+				categoryID:     20,
+				manufacturerID: 54,
+			},
+			wantError:              true,
+			errorQuantityExpected: 3,
+		},
+		{
+			description: "Invalid product - all fields are invalids",
+			fields: product{
+				name:           "Eco-Friendly Water Bottle$$$$",
+				description:    "Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones Experience immersive sound with our Wireless Noise-Canceling Headphones ",
+				barcode:        "400638133393&8",
+				brandID:        11111,
+				categoryID:     -40,
+				manufacturerID: 3458641,
+			},
+			wantError:              true,
+			errorQuantityExpected: 6,
 		},
 	}
 
 	// Act
-	for _, test := range tests {
-		t.Run(test.test_descrition, func(t *testing.T) {
-			test.product_datas.name = test.new_value_field
-
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
 			productBuilder := NewProductBuilder()
-			product, err := productBuilder.SetName(test.name).
-				SetDescription(test.description).
-				SetBarcode(test.barcode).
-				SetCategoryID(test.categoryID).
-				SetManufacturerID(test.manufacturerID).
+			product, err := productBuilder.Name(tt.fields.name).
+				Description(tt.fields.description).
+				Barcode(tt.fields.barcode).
+				CategoryID(tt.fields.categoryID).
+				BrandID(tt.fields.brandID).
+				ManufacturerID(tt.fields.manufacturerID).
 				Build()
 
 			// Assert
-			assert.Nil(t, product)
-			assert.Equal(t, err[0].Error(), test.error_expected.Error())
-		})
-	}
-}
-
-func Test_NewProduct_TestErrorsFieldDescrition(t *testing.T) {
-	// Arrange
-	tests := []tests_product_field{
-		{
-			test_descrition: "descrition with longer than 100 characters",
-			new_value_field: "Ultimate All-in-One Multi-Purpose Kitchen Appliance with Smart Technology for Effortless Cooking, Baking, and Food Preparation",
-			product_datas:  product,
-			error_expected: failure.NameIsLong("description", 100),
-			error_quantity_expected: 1,
-		},
-		{
-			test_descrition: "descrition with less than 10 characters",
-			new_value_field: "Lamp", 
-			product_datas: product, 
-			error_expected: failure.NameIsShort("description", 10),
-			error_quantity_expected: 1,
-		},
-		{
-			test_descrition: "empyt descrition",
-			new_value_field: "", 
-			product_datas: product, 
-			error_expected: failure.NameIsEmpty("description"),
-			error_quantity_expected: 1,
-		},
-	}
-
-	// Act
-	for _, test := range tests {
-		t.Run(test.test_descrition, func(t *testing.T) {
-			test.product_datas.description = test.new_value_field
-
-			productBuilder := NewProductBuilder()
-			product, err := productBuilder.SetName(test.name).
-				SetDescription(test.description).
-				SetBarcode(test.barcode).
-				SetCategoryID(test.categoryID).
-				SetManufacturerID(test.manufacturerID).
-				Build()
-
-			// Assert
-			assert.Nil(t, product)
-			assert.Len(t, err, test.error_quantity_expected)
-			assert.Equal(t, err[0], test.error_expected)
+			if tt.wantError {
+				assert.Nil(t, product)
+				assert.Len(t, err, tt.errorQuantityExpected)
+			} else {
+				assert.Nil(t, err)
+				assert.IsType(t, Product{}, *product)
+			}
 		})
 	}
 }

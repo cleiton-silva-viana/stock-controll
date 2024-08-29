@@ -2,25 +2,28 @@ package entity
 
 import (
 	"stock-controll/internal/domain/failure"
-	"stock-controll/internal/domain/value_object"
+	"stock-controll/internal/domain/validation"
+	vo "stock-controll/internal/domain/value_object"
 	"strings"
 )
 
 type Product struct {
-	ID             int
-	name           string
+	id             int
+	name           vo.Name
 	description    string
 	barcode        string
+	brandID        int
 	manufacturerID int
 	categoryID     int
 }
 
 type ProductBuilder struct {
-	ID             int
-	name           string
+	id             int
+	name           vo.Name
 	description    string
 	barcode        string
 	manufacturerID int
+	brandID        int
 	categoryID     int
 	errorList      []error
 }
@@ -29,76 +32,79 @@ func NewProductBuilder() *ProductBuilder {
 	return &ProductBuilder{}
 }
 
-func (p *ProductBuilder) SetName(name string) *ProductBuilder {
-	nameParsed := strings.Trim(name, " ")
-	if nameParsed == "" {
-		p.errorList = append(p.errorList, failure.NameIsEmpty("name"))
+func (p *ProductBuilder) Name(name string) *ProductBuilder {
+	builder := vo.NewNameBuilder()
+	nameValidated, err := builder.Field("name", name).
+		Length(2, 25).
+		Digts(true).
+		SpecialCharacters(true).
+		Build()
+	if err != nil {
+		p.errorList = append(p.errorList, err)
 		return p
 	}
-
-	const MIN_LENGTH = 2
-	if len(nameParsed) < MIN_LENGTH {
-		p.errorList = append(p.errorList, failure.NameIsShort("name", MIN_LENGTH))
-		return p
-	}
-
-	const MAX_LENGTH = 25
-	if len(nameParsed) > MAX_LENGTH {
-		p.errorList = append(p.errorList, failure.NameIsLong("name", MAX_LENGTH))
-		return p
-	}
-
-	nameWithoutSpaces := strings.ReplaceAll(name, " ", "")
-	if value_object.ContainsSpecialChars(nameWithoutSpaces) {
-		p.errorList = append(p.errorList, failure.NameWithInvalidChars("name"))
-		return p
-	}
-
-	p.name = nameParsed
+	p.name = *nameValidated
 	return p
 }
 
-func (p *ProductBuilder) SetDescription(description string) *ProductBuilder {
-	descriptionParsed := strings.Trim(description, " ")
-	if descriptionParsed == "" {
-		p.errorList = append(p.errorList, failure.NameIsEmpty("description"))
-		return p
+func (p *ProductBuilder) Description(description string) *ProductBuilder {
+	if strings.ReplaceAll(description, " ", "") == "" {
+		p.errorList = append(p.errorList, failure.FieldIsEmpty("description"))
 	}
 
-	const MIN_LENGTH = 10
-	if len(descriptionParsed) < MIN_LENGTH {
-		p.errorList = append(p.errorList, failure.NameIsShort("description", MIN_LENGTH))
+	if len(description) < 10 || len(description) > 100 {
+		p.errorList = append(p.errorList, failure.FieldNotRangeValues("description", []string{"10", "100"}))
 		return p
 	}
-
-	const MAX_LENGTH = 100
-	if len(descriptionParsed) > MAX_LENGTH {
-		p.errorList = append(p.errorList, failure.NameIsLong("description", MAX_LENGTH))
-		return p
-	}
-
-	p.name = descriptionParsed
+	p.description = description
 	return p
 }
 
-func (p *ProductBuilder) SetBarcode(barcode string) *ProductBuilder {
-	// Validações
+func (p *ProductBuilder) Barcode(barcode string) *ProductBuilder {
+	builder := vo.NewNameBuilder()
+	_, err := builder.Field("barcode", barcode).
+		Digts(true).
+		Length(6, 24).
+		SpecialCharacters(false).
+		Build()
+	if err != nil {
+		p.errorList = append(p.errorList, err)
+		return p
+	}
+
+	if validation.ContainsLetters(barcode) {
+		p.errorList = append(p.errorList, failure.FieldWithLetters("barcode"))
+		return p
+	}
 
 	p.barcode = barcode
 	return p
 }
 
-func (p *ProductBuilder) SetManufacturerID(manufacturerID int) *ProductBuilder {
-	// Validações
-
+func (p *ProductBuilder) ManufacturerID(manufacturerID int) *ProductBuilder {
+	if manufacturerID < 0 || manufacturerID > 100000 {
+		p.errorList = append(p.errorList, failure.FieldNotRangeValues("manufacturer", []string{"0", "100000"}))
+		return p
+	}
 	p.manufacturerID = manufacturerID
 	return p
 }
 
-func (p *ProductBuilder) SetCategoryID(categoryID int) *ProductBuilder {
-	// Validações
-
+func (p *ProductBuilder) CategoryID(categoryID int) *ProductBuilder {
+	if categoryID < 0 || categoryID > 100 {
+		p.errorList = append(p.errorList, failure.FieldNotRangeValues("category", []string{"0", "100"}))
+		return p
+	}
 	p.categoryID = categoryID
+	return p
+}
+
+func (p *ProductBuilder) BrandID(brandID int) *ProductBuilder {
+	if brandID < 0 || brandID > 10000 {
+		p.errorList = append(p.errorList, failure.FieldNotRangeValues("brand", []string{"0", "100"}))
+		return p
+	}
+	p.brandID = brandID
 	return p
 }
 
@@ -110,6 +116,7 @@ func (p *ProductBuilder) Build() (*Product, []error) {
 		name:           p.name,
 		description:    p.description,
 		barcode:        p.barcode,
+		brandID:        p.brandID,
 		manufacturerID: p.manufacturerID,
 		categoryID:     p.categoryID,
 	}, nil

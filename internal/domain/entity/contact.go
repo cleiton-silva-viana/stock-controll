@@ -1,22 +1,26 @@
 package entity
 
-import "stock-controll/internal/domain/value_object"
+import (
+	vo "stock-controll/internal/domain/value_object"
+)
 
 type Contact struct {
-	Id    int
-	Phone value_object.Phone
-	Email value_object.Email
+	id    int
+	phone vo.Phone
+	email vo.Email
 }
 
-func NewContact(email, phone string) (*Contact, []error) {
+func NewContact(ID int, email, phone string) (*Contact, []error) {
 	var errorsList []error
 
-	userEmail, err := value_object.NewEmail(email)
+	// Validar o ID
+
+	userEmail, err := vo.NewEmail(email)
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
 
-	userPhone, err := value_object.NewPhone(phone)
+	userPhone, err := vo.NewPhone(phone)
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
@@ -26,8 +30,8 @@ func NewContact(email, phone string) (*Contact, []error) {
 	}
 
 	return &Contact{
-		Id:    0,
-		Email: *userEmail,
-		Phone: *userPhone,
+		id: ID,
+		email: *userEmail,
+		phone: *userPhone,
 	}, nil
 }

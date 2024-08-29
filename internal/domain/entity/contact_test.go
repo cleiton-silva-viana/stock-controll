@@ -1,4 +1,5 @@
 package entity
+
 import (
 	"testing"
 
@@ -6,48 +7,64 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type user_contact struct {
-	email string
-	phone string
-}
-
-func Test_NewContact_MustReturnAContact(t *testing.T) {
+func Test_NewContact(t *testing.T) {
 	// Arrange
-	email := faker.New().Internet().Email()
-	phone := "(21) 98322-4321"
+	type contact struct {
+		email string
+		phone string
+	}
 
-	// Act
-	result, err := NewContact(email, phone)
-
-	// Assert
-	assert.Nil(t, err)
-	assert.IsType(t, Contact{}, *result)
-}
-
-func Test_NewContact_MustReturnError(t *testing.T) {
-	// Arrange
-	tests := []struct {
-		description string
-		user_contact
-	}{
-		{description: "user with invalid email",
-			user_contact: user_contact{
-				email: "johan.email.gmail",
-				phone: "(21) 98441-5432"}},
-		{description: "user with invalid phone",
-			user_contact: user_contact{
+	tests := []test[contact]{
+		{
+			description: "Valid contact - must return a contact entity",
+			fields: contact{
+				phone: "(21) 98322-4321",
 				email: faker.New().Internet().Email(),
-				phone: "21984415432"}},
+			},
+			wantError: false,
+		},
+		{
+			description: "Invalid contact - phone invalid, expected 1 error in errorList",
+			fields: contact{
+				phone: "(21) 98322-4321a",
+				email: faker.New().Internet().Email(),
+			},
+			wantError:              true,
+			errorQuantityExpected: 1,
+		},
+		{
+			description: "Invalid contact - email invalid, expected 1 error in errorList",
+			fields: contact{
+				phone: "(21) 98322-4321",
+				email: "donald.trump@contact.com.",
+			},
+			wantError:              true,
+			errorQuantityExpected: 1,
+		},
+		{
+			description: "Invalid contact - email and phone invalid, expected 2 errors in errorList",
+			fields: contact{
+				phone: "(21) 98322-4321a",
+				email: "joe.biden.io",
+			},
+			wantError:              true,
+			errorQuantityExpected: 2,
+		},
 	}
 
 	// Act
-	for _, test := range tests {
-		t.Run(test.description, func(t *testing.T) {
-			result, err := NewContact(test.email, test.phone)
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			contact, err := NewContact(1, tt.fields.email, tt.fields.phone)
 
 			// Assert
-			assert.Nil(t, result)
-			assert.NotEmpty(t, err)
+			if tt.wantError {
+				assert.Nil(t, contact)
+				assert.Len(t, err, tt.errorQuantityExpected)
+			} else {
+				assert.Nil(t, err)
+				assert.IsType(t, Contact{}, *contact)
+			}
 		})
 	}
 }

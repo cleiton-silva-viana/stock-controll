@@ -1,4 +1,4 @@
-package value_object
+package valueobject
 
 import (
 	"stock-controll/internal/domain/failure"
@@ -7,39 +7,60 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_NewCNPJ_MustReturnACNPJ(t *testing.T) {
+func Test_NewCPNJ(t *testing.T) {
 	// Arrange
-	cnpj := "11.222.333/0001-81"
-
-	// Act
-	result, err := NewCNPJ(cnpj)
-
-	// Assert
-	assert.Nil(t, err)
-	assert.IsType(t, CNPJ{}, *result)
-}
-
-func Test_NewCNPJ_MustReturnErrorFormat(t *testing.T) {
-	// Arrange
-	tests := []struct {
-		description    string
-		cnpj           string
-		error_expected error
-	}{
-		{description: "CPNJ with invalid quantity digits", cnpj: "00.000.000/0001-222", error_expected: failure.CPNJWithInvalidFormat},
-		{description: "CPNJ with invalid format", cnpj: "00.000.000.0001.222", error_expected: failure.CPNJWithInvalidFormat},
-		{description: "CPNJ with invalid chars", cnpj: "00 000 000 0001 222", error_expected: failure.CPNJWithInvalidFormat},
-		{description: "CPNJ with invalid checker digits", cnpj: "12.345.678/0001-99", error_expected: failure.CPNJWithInvalidCheckerDigits},
+	tests := []test{
+		{
+			test_description: "CNPJ valid - correct requierements",
+			field:            "11.222.333/0001-81",
+			want_error:       false,
+		},
+		{
+			test_description: "CPNJ invalid - format invalid",
+			field:            "00.000.000.0001.22",
+			want_error:       true,
+			expected_error:   failure.FieldWithInvalidFormat("cnpj", "XX.XXX.XXX/0001-XX"),
+		},
+		{
+			test_description: "CPNJ invalid - contains special characters invalids",
+			field:            "00 000 000 0001 22",
+			want_error:       true,
+			expected_error:   failure.FieldWithInvalidFormat("cnpj", "XX.XXX.XXX/0001-XX"),
+		},
+		{
+			test_description: "CPNJ invalid - digits quantity minor than expected",
+			field:            "00.000.000/0001-2",
+			want_error:       true,
+			expected_error:   failure.FieldWithInvalidFormat("cnpj", "XX.XXX.XXX/0001-XX"),
+		},
+		{
+			test_description: "CPNJ invalid - digits quantity greater than expected",
+			field:            "00.000.000/0001-222",
+			want_error:       true,
+			expected_error:   failure.FieldWithInvalidFormat("cnpj", "XX.XXX.XXX/0001-XX"),
+		},
+		{
+			test_description: "CPNJ invalid - contains checker digits inconsistents",
+			field:            "12.345.678/0001-99",
+			want_error:       true,
+			expected_error:   failure.CPNJWithInvalidCheckerDigits,
+		},
 	}
 
 	// Act
-	for _, test := range tests {
-		t.Run(test.description, func(t *testing.T) {
-			result, err := NewCNPJ(test.cnpj)
+	for _, tt := range tests {
+		t.Run(tt.test_description, func(t *testing.T) {
+			cnpj, err := NewCNPJ(tt.field)
 
 			// Assert
-			assert.Nil(t, result)
-			assert.ErrorIs(t, err, test.error_expected)
+			if tt.want_error {
+				assert.Nil(t, cnpj)
+				assert.Equal(t, tt.expected_error, err)
+			} else {
+				assert.Nil(t, err)
+				assert.IsType(t, CNPJ{}, *cnpj)
+			}
+
 		})
 	}
 }

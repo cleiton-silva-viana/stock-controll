@@ -6,81 +6,94 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type manufacturer struct {
-	name                    string
-	cnpj                    string
-	category                string
-	email                   string
-	phone                   string
-	error_quantity_expected int
-}
-
-func Test_NewManufacturer_MustReturnAManufacturer(t *testing.T) {
+func Test_NewManufacturer(t *testing.T) {
 	// Arrange
-	name := "pepsico"
-	cnpj := "24.341.272/0001-13"
-	category := "foods"
-	email := "contact@pepsico.com"
-	phone := "(21) 40028922"
+	type manufacturer struct {
+		name     string
+		cnpj     string
+		category string
+	}
 
-	// Act
-	manufacutrerBuilder := NewManufacturerBuilder()
-	manufacturer, err := manufacutrerBuilder.
-		SetName(name).
-		SetCategory(category).
-		SetCNPJ(cnpj).
-		SetContact(email, phone).
-		Build()
-
-	// Assert
-	assert.Nil(t, err)
-	assert.IsType(t, Manufacturer{}, *manufacturer)
-}
-
-func Test_NewManufacturer_WithError(t *testing.T) {
-	// Arrange
-	var tests = []struct {
-		descritipn string
-		manufacturer
-	}{
+	tests := []test[manufacturer]{
 		{
-			descritipn: "manufacuterer with 2 errors",
-			manufacturer: manufacturer{
-				name:                    "amazon",
-				cnpj:                    "12.345.678/0001-01",
-				category:                "all",
-				email:                   "amazon.contact.com",
-				phone:                   "(21) 40028922",
-				error_quantity_expected: 2,
+			description: "Valid manufacturer - all fields are valids, must return a manufacturer entity",
+			fields: manufacturer{
+				name:     "pepsico",
+				cnpj:     "24.341.272/0001-13",
+				category: "foods",
 			},
+			wantError:    false,
 		},
 		{
-			descritipn: "manufacuterer with 3 errors",
-			manufacturer: manufacturer{
-				name:                    "$amazon$",
-				cnpj:                    "12.345.678/0001-01",
-				category:                "",
-				email:                   "amazon@contact.com",
-				phone:                   "(21) 400289228",
-				error_quantity_expected: 3,
+			description: "Invalid manufacturer - field 'name' invalid, 1 error espected",
+			fields: manufacturer{
+				name:     "#@$%!",
+				cnpj:     "24.341.272/0001-13",
+				category: "foods",
 			},
+			wantError:              true,
+			errorQuantityExpected: 1,
+		},
+		{
+			description: "Invalid manufacturer - field 'cnpj' invalid, 1 error espected",
+			fields: manufacturer{
+				name:     "coca cola",
+				cnpj:     "24.341.272/0001-14",
+				category: "drinks",
+			},
+			wantError:              true,
+			errorQuantityExpected: 1,
+		},
+		{
+			description: "Invalid manufacturer - field 'category' invalid, 1 error espected",
+			fields: manufacturer{
+				name:     "bauduco",
+				cnpj:     "24.341.272/0001-13",
+				category: " *_* ",
+			},
+			wantError:              true,
+			errorQuantityExpected: 1,
+		},
+		{
+			description: "Invalid manufacturer - field 'cnpj' & 'category' invalid, 2 errors espected",
+			fields: manufacturer{
+				name:     "coca cola",
+				cnpj:     "24.341.272/0001-12",
+				category: " =) ",
+			},
+			wantError:              true,
+			errorQuantityExpected: 2,
+		},
+		{
+			description: "Invalid manufacturer - al fields is invalid, 3 errors espected",
+			fields: manufacturer{
+				name:     "coca-cola",
+				cnpj:     "24.341.272/0001-12",
+				category: " =) ",
+			},
+			wantError:              true,
+			errorQuantityExpected: 3,
 		},
 	}
 
 	// Act
-	for _, test := range tests {
-		t.Run(test.descritipn, func(t *testing.T) {
-			manufacutrerBuilder := NewManufacturerBuilder()
-			manufacturer, err := manufacutrerBuilder.
-				SetName(test.name).
-				SetCategory(test.category).
-				SetCNPJ(test.cnpj).
-				SetContact(test.email, test.phone).
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			manufacturerBuilder := NewManufacturerBuilder()
+			manufacturer, err := manufacturerBuilder.
+				Name(tt.fields.name).
+				Category(tt.fields.category).
+				CNPJ(tt.fields.cnpj).
 				Build()
-			
-			// Assert
-			assert.Nil(t, manufacturer)
-			assert.Len(t, err, test.error_quantity_expected)
+
+			//Assert
+			if tt.wantError {
+				assert.Nil(t, manufacturer)
+				assert.Len(t, err, tt.errorQuantityExpected)
+			} else {
+				assert.Nil(t, err)
+				assert.IsType(t, Manufacturer{}, *manufacturer)
+			}
 		})
 	}
 }

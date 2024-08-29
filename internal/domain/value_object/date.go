@@ -1,7 +1,8 @@
-package value_object
+package valueobject
 
 import (
 	"stock-controll/internal/domain/failure"
+	"stock-controll/internal/domain/validation"
 	"time"
 )
 
@@ -9,22 +10,10 @@ type Date struct {
 	birthDate time.Time
 }
 
-func (b *Date) IsOlderThan(minimunAge int, trowError bool) (bool, error) {
-	currentDate := time.Now()
-	limitDate := currentDate.AddDate(-minimunAge, 0, 0)
-	isOlder :=  b.birthDate.Before(limitDate)
-
-	if trowError && !isOlder {
-		return false, failure.InsufficientAge
-	}
-
-	return isOlder, nil
-}
-
 func NewDate(date string) (*Date, error) {
-	isValid, dateTime := DateFormatIsValid(date)
+	isValid, dateTime := validation.DateFormatIsValid(date)
 	if !isValid {
-		return nil, failure.DateWithInvalidFormat
+		return nil, failure.FieldWithInvalidFormat("date", "yyyy-mm-dd")
 	}
 
 	return &Date{
@@ -32,3 +21,9 @@ func NewDate(date string) (*Date, error) {
 	}, nil
 }
 
+func (b *Date) IsOlderThan(minimunAge int) bool {
+	currentDate := time.Now()
+	limitDate := currentDate.AddDate(-minimunAge, 0, 0)
+	isOlder := b.birthDate.Before(limitDate)
+	return isOlder
+}

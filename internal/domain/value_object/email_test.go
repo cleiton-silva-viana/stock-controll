@@ -1,8 +1,8 @@
-package value_object
+package valueobject
 
 import (
 	"testing"
-	
+
 	"stock-controll/internal/domain/failure"
 
 	"github.com/jaswdr/faker"
@@ -11,45 +11,83 @@ import (
 
 var fake = faker.New()
 
-func Test_NewEmail_WithValidEmail(t *testing.T) {
+func Test_NewEmail(t *testing.T) {
 	// Arrange
-	email := fake.Internet().Email()
-	expected_type := Email{}
-
-	// Act
-	result, err := NewEmail(email)
-
-	// Assert
-	assert.Nil(t, err)
-	assert.IsType(t, &expected_type, result)
-}
-
-func Test_NewEmail_WithInvalidEmailFormat(t *testing.T) {
-	// Arrange
-	tests := []struct {
-		name string
-		email string
-	}{
-		{"faltando símbolo @", "user.example.com"},
-		{"faltando domínio", "user.example@"},
-		{"faltando o nome de usuário", "@example.com"},
-		{"domínio inválido", "@example..com"},
-		{"espaços em branco", "user @example.com"},
-		{"domínio sem TDL (Top-Level Domain)", "user@example"},
-		{"uso de caracteres especiais no ínicio  do email", "@user@example.com"},
-		{"uso de caracteres especiais no fim do email", "user@example.com."},
-		{"incorrect format", "user@example,com."},
+	tests := []test{
+		{
+			test_description: "Valid email - genenated with faker package",
+			field:            fake.Internet().Email(),
+			want_error:       false,
+		},
+		{
+			test_description: "Invalid email - without character @",
+			field:            "user.example.com",
+			want_error:       true,
+			expected_error: failure.FieldWithInvalidFormat("email", "example@domain.com"),
+		},
+		{
+			test_description: "Invalid email - without domain",
+			field:            "user.example@",
+			want_error:       true,
+			expected_error: failure.FieldWithInvalidFormat("email", "example@domain.com"),
+		},
+		{
+			test_description: "Invalid email - without user name",
+			field:            "@example.com",
+			want_error:       true,
+			expected_error: failure.FieldWithInvalidFormat("email", "example@domain.com"),
+		},
+		{
+			test_description: "Invalid email - invalid domain",
+			field:            "@example..com",
+			want_error:       true,
+			expected_error: failure.FieldWithInvalidFormat("email", "example@domain.com"),
+		},
+		{
+			test_description: "Invalid email - with white spaces",
+			field:            "user @example.com",
+			want_error:       true,
+			expected_error: failure.FieldWithInvalidFormat("email", "example@domain.com"),
+		},
+		{
+			test_description: "Invalid email - domain without TDL",
+			field:            "user@example",
+			want_error:       true,
+			expected_error: failure.FieldWithInvalidFormat("email", "example@domain.com"),
+		},
+		{
+			test_description: "Invalid email - initializing with characters specials",
+			field:            "@user@example.com",
+			want_error:       true,
+			expected_error: failure.FieldWithInvalidFormat("email", "example@domain.com"),
+		},
+		{
+			test_description: "Invalid email - ending with special characters",
+			field:            "user@example.com.",
+			want_error:       true,
+			expected_error: failure.FieldWithInvalidFormat("email", "example@domain.com"),
+		},
+		{
+			test_description: "Invalid email - format incorrect",
+			field:            "user@example,com.",
+			want_error:       true,
+			expected_error: failure.FieldWithInvalidFormat("email", "example@domain.com"),
+		},
 	}
 
 	// Act
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			result, err := NewEmail(test.email)
-
+	for _, tt := range tests {
+		t.Run(tt.test_description, func(t *testing.T) {
+			email, err := NewEmail(tt.field)
+			
 			// Assert
-			assert.Nil(t, result)
-			assert.ErrorIs(t, err, failure.EmailWithInvalidFormat)
+			if tt.want_error {
+				assert.Nil(t, email)
+				assert.Equal(t, tt.expected_error, err)
+			} else {
+				assert.Nil(t, err)
+				assert.IsType(t, Email{}, *email)
+			}
 		})
 	}
 }
-

@@ -1,44 +1,44 @@
 package entity
 
 import (
-	"stock-controll/internal/domain/value_object"
+	"fmt"
+	"stock-controll/internal/domain/failure"
+	vo "stock-controll/internal/domain/value_object"
 )
 
 type User struct {
-	ID         int
-	Name       value_object.Name
-	Gender     value_object.Gender
-	BirthDate  value_object.Date
+	id         int
+	// firstName vo.Name
+	// lastName vo.Name
+	Name       vo.Name
+	Gender     vo.Gender
+	BirthDate  vo.Date
 	Occupation string
-	Password   value_object.Password
 }
 
-func NewUser(name, gender, birthDate, password string) (*User, []error) {
+func NewUser(name, gender, birthDate string) (*User, []error) {
 	var errorsList []error
 
-	nameVO, err := value_object.NewName(name, "name", 20)
+	nameParsed, err := vo.NameDefaultValidation("name", name)
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
 
-	genderVO, err := value_object.NewGender(gender)
+	genderParsed, err := vo.NewGender(gender)
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
 
-	dateVO, err := value_object.NewDate(birthDate)
+	dateParsed, err := vo.NewDate(birthDate)
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
 
-	_, err = dateVO.IsOlderThan(18, true)
-	if err != nil {
-		errorsList = append(errorsList, err)
-	}
-
-	passwordVO, err := value_object.NewPassword(password)
-	if err != nil {
-		errorsList = append(errorsList, err)
+	if dateParsed != nil {
+		isOlder := dateParsed.IsOlderThan(18)
+		if !isOlder {
+			errorsList = append(errorsList, failure.InsufficientAge)
+		}
 	}
 
 	if len(errorsList) > 0 {
@@ -46,9 +46,18 @@ func NewUser(name, gender, birthDate, password string) (*User, []error) {
 	}
 
 	return &User{
-		Name:      *nameVO,
-		Gender:    *genderVO,
-		BirthDate: *dateVO,
-		Password:  *passwordVO,
+		Name:      *nameParsed,
+		Gender:    *genderParsed,
+		BirthDate: *dateParsed,
 	}, nil
+}
+
+func (u *User) GetName() string {
+	nameParsed := fmt.Sprint(u.Name)
+	return nameParsed
+}
+
+func (u *User) GetGender() string { 
+	genderParsed := fmt.Sprint(u.Gender)
+	return genderParsed
 }

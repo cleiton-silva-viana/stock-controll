@@ -1,4 +1,4 @@
-package value_object
+package valueobject
 
 import (
 	"regexp"
@@ -8,10 +8,6 @@ import (
 
 type Email struct {
 	email string
-}
-
-func (e *Email) GetEmail() string {
-	return e.email
 }
 
 func NewEmail(email string) (*Email, error) {
@@ -24,12 +20,16 @@ func NewEmail(email string) (*Email, error) {
 	}, nil
 }
 
+func (e *Email) GetEmail() string {
+	return e.email
+}
+
 func validateEmailFormat(email string) error {
 	const emailRegex = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 	re := regexp.MustCompile(emailRegex)
 	isInvalid := !re.MatchString(email)
 	if isInvalid {
-		return failure.EmailWithInvalidFormat
+		return failure.FieldWithInvalidFormat("email", "example@domain.com")
 	}
 	return nil
 }

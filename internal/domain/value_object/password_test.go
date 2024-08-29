@@ -1,4 +1,4 @@
-package value_object
+package valueobject
 
 import (
 	"testing"
@@ -8,53 +8,78 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_NewPassword_WithValidPassword(t *testing.T) {
-	// Arrange
-	var tests = []struct {
-		descrition string
-		password   string
-	}{
-		{descrition: "password with 8 characters", password: "AbCd24@$"},
-		{descrition: "password with 24 characters", password: "Abcd$%@$AbCd24@$A65d24@$"},
+func Test_NewPassword(t *testing.T) {
+	//Arrange
+	tests := []test{
+		{
+			test_description: "Valid password - with 8 characters", 
+			field: "AbCd24@$", 
+			want_error: false,
+		},
+		{
+			test_description: "Valid password - with 16 characters", 
+			field: "AbCd24@$A&56dv$1", 
+			want_error: false,
+		},
+		
+		{
+			test_description: "Valid password - with 24 characters", 
+			field: "Abcd$%@$AbCd24@$A65d24@$", 
+			want_error: false,
+		},
+		{
+			test_description: "Invalid password - less than 8 characters", 
+			field: "Halo$12", 
+			want_error: true, 
+			expected_error: failure.PasswordIsShort(8),
+		},
+		{
+			test_description: "Invalid password - more than 24 characters", 
+			field: "Abcd$%@$AbCd24@$A65d24@$cf$12", 
+			want_error: true, 
+			expected_error: failure.PasswordIsLong(24),
+		},
+		{
+			test_description: "Invalid password - without lower cases", 
+			field: "HALO123%$", 
+			want_error: true, 
+			expected_error: failure.PasswordNotContainsLowerCases,
+		},
+		{
+			test_description: "Invalid password - without upper cases", 
+			field: "halo123%$", 
+			want_error: true, 
+			expected_error: failure.PasswordNotContainsUpperCases,
+		},
+		{
+			test_description: "Invalid password - without special characters", 
+			field: "PaloAlto123", 
+			want_error: true, 
+			expected_error: failure.FieldWithoutSpecialChars("password"),
+		},
+		{
+			test_description: "Invalid password - without number", 
+			field: "PaloAlto@#$", 
+			want_error: true, 
+			expected_error: failure.FieldWithoutNumber("password"),
+		},
 	}
 
 	// Act
-	for _, test := range tests {
-		t.Run(test.descrition, func(t *testing.T) {
-			result, err := NewPassword(test.password)
+	for _, tt := range tests {
+		t.Run(tt.test_description, func(t *testing.T) {
+			password, err := NewPassword(tt.field)
 
 			// Assert
-			assert.Nil(t, err)
-			assert.IsType(t, &Password{}, result)
-			assert.NotEmpty(t, result.password_hashed)
-			assert.NotEmpty(t, result.password_salt)
-		})
-	}
-}
-
-func Test_NewPassword_WithInvalidParams(t *testing.T) {
-	// Arrange
-	var tests = []struct {
-		descritpion    string
-		password       string
-		expected_error error
-	}{
-		{descritpion: "password less than 8 characters", password: "Halo$12", expected_error: failure.PasswordIsShort},
-		{descritpion: "password with more than 24 characters", password: "Palo123Alto456San!@#Diego$%&", expected_error: failure.PasswordIsLong},
-		{descritpion: "password without lower cases", password: "HALO123%$", expected_error: failure.PasswordNotContainsLowerCases},
-		{descritpion: "password without upper cases", password: "halo123%$", expected_error: failure.PasswordNotContainsUpperCases},
-		{descritpion: "password without special characters", password: "PaloAlto123", expected_error: failure.PasswordNotContainsSpecialChars},
-		{descritpion: "password without number", password: "PaloAlto@#$", expected_error: failure.PasswordNotContainsNumbers},
-	}
-
-	// Act
-	for _, test := range tests {
-		t.Run(test.descritpion, func(t *testing.T) {
-			result, err := NewPassword(test.password)
-
-			// Assert
-			assert.Nil(t, result)
-			assert.ErrorIs(t, err, test.expected_error)
+			if tt.want_error {
+				assert.Nil(t, password)
+				assert.Equal(t, tt.expected_error, err)
+				} else {
+				assert.Nil(t, err)
+				assert.IsType(t, Password{}, *password)
+				assert.NotEmpty(t, password.password_hashed)
+				assert.NotEmpty(t, password.password_salt)
+			}
 		})
 	}
 }
