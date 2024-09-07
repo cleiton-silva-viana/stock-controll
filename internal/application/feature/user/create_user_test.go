@@ -12,51 +12,153 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func Test_CreateUser(t *testing.T) {
-	// Arrange
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
+func setupRepositoriesMock(ctrl *gomock.Controller) (*uowmock.MockIUnitOfWork, *persistencemock.MockISQLUser, *persistencemock.MockISQLCredential, *persistencemock.MockISQLContact) {
 	unitOfWorkMock := uowmock.NewMockIUnitOfWork(ctrl)
 
 	userRepositoryMock := persistencemock.NewMockISQLUser(ctrl)
 	credentialRepositoryMock := persistencemock.NewMockISQLCredential(ctrl)
 	contactRepositoryMock := persistencemock.NewMockISQLContact(ctrl)
 
-	unitOfWorkMock.EXPECT().Begin().Return(nil)
+	unitOfWorkMock.EXPECT().UserRepository().Return(userRepositoryMock).MaxTimes(1)
+	unitOfWorkMock.EXPECT().CredentialRepository().Return(credentialRepositoryMock).MaxTimes(1)
+	unitOfWorkMock.EXPECT().ContactRepository().Return(contactRepositoryMock).MaxTimes(1)
 
-	unitOfWorkMock.
-		EXPECT().UserRepository().Return(userRepositoryMock)
-	unitOfWorkMock.
-		EXPECT().CredentialRepository().Return(credentialRepositoryMock)
-	unitOfWorkMock.
-		EXPECT().ContactRepository().Return(contactRepositoryMock)
+	return unitOfWorkMock, userRepositoryMock, credentialRepositoryMock, contactRepositoryMock
+}
+
+func featureCreateUser(unitOfWorkMock *uowmock.MockIUnitOfWork) *UserFeature {
+	return &UserFeature{
+		uow:               unitOfWorkMock,
+		userFactory:       &factory.UserFactory{},
+		credentialFactory: &factory.CredentialFactory{},
+		contactFactory:    &factory.ContactFactory{},
+	}
+}
+
+var fake = faker.New()
+
+type generateUserRequestDTO struct {
+	userDTO dto.CreateUserRequestDTO
+}
+
+func NewGenerateCreateUserRequestDTO() *generateUserRequestDTO {
+	return &generateUserRequestDTO{
+		userDTO: dto.CreateUserRequestDTO{
+			Name:      fake.Person().FirstName(),
+			Gender:    fake.Person().Gender(),
+			BirthDate: "1989-05-25",
+			Password:  "WithUpper1945Letters##",
+			Email:     fake.Person().Contact().Email,
+			Phone:     "(21) 4002-8922",
+		},
+	}
+}
+
+func (g *generateUserRequestDTO) UseInvalidPassword() *generateUserRequestDTO {
+	g.userDTO.Password = "123abc"
+	return g
+}
+
+func (g *generateUserRequestDTO) UseInvalidName() *generateUserRequestDTO {
+	g.userDTO.Name = "R0M4N0!"
+	return g
+}
+
+func (g *generateUserRequestDTO) UseInvalidEmail() *generateUserRequestDTO {
+	g.userDTO.Email = g.userDTO.Email + "!"
+	return g
+}
+
+func (g *generateUserRequestDTO) Build() *dto.CreateUserRequestDTO {
+	return &g.userDTO
+}
+
+func Test_CreateUser(t *testing.T) {
+	// Arrange
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	unitofworkMock, userRepositoryMock, credentialRepositoryMock, contactRepositoryMock := setupRepositoriesMock(ctrl)
+
+	unitofworkMock.EXPECT().Begin().Return(nil)
+	unitofworkMock.EXPECT().Commit().Return(nil)
 
 	userRepositoryMock.EXPECT().Save(gomock.Any()).Return(1, nil)
 	credentialRepositoryMock.EXPECT().Save(gomock.Any()).Return(nil)
 	contactRepositoryMock.EXPECT().Save(gomock.Any()).Return(nil)
 
-	fake := faker.New()
-	userDTO := dto.CreateUserRequestDTO{
-		Name:      fake.Person().FirstName(),
-		Gender:    fake.Person().Gender(),
-		BirthDate: "1989-05-25",
-		Password:  "WithUpper1945Letters##",
-		Email:     fake.Person().Contact().Email,
-		Phone:     "(21) 4002-8922",
-	}
-	feature := NewUserFeature(
-		unitOfWorkMock,
-		&factory.UserFactory{},
-		&factory.CredentialFactory{},
-		&factory.ContactFactory{})
+	feature := featureCreateUser(unitofworkMock)
+
+	userDTO := NewGenerateCreateUserRequestDTO().Build()
 
 	// Act
-	response, err := feature.CreateUser(userDTO)
+	result, err := feature.CreateUser(*userDTO)
 
-	// Arrange
+	// Assert
 	assert.Nil(t, err)
-	assert.IsType(t, dto.CreateUserResponseDTO{}, *response)
+	assert.NotNil(t, result)
 }
 
+func Test_CreateUser_InvalidParamsForCreateUserEntity(t *testing.T) {
+	// Arrange
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	unitofworkMock, _, _, _ := setupRepositoriesMock(ctrl)
+	unitofworkMock.EXPECT().Begin().Return(nil)
+
+	feature := featureCreateUser(unitofworkMock)
+	userDTO := NewGenerateCreateUserRequestDTO().UseInvalidName().Build()
+
+	// Act
+	response, err := feature.CreateUser(*userDTO)
+
+	// Assert
+	assert.Nil(t, response)
+	assert.Error(t, err)
+}
+
+func Test_CreateUser_InvalidParamsForCreateCredentialEntity(t *testing.T) {
+	// Arrange
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	unitofworkMock, userRepositoryMock, _, _ := setupRepositoriesMock(ctrl)
+	unitofworkMock.EXPECT().Begin().Return(nil)
+	unitofworkMock.EXPECT().Rollback().Return(nil)
+
+	userRepositoryMock.EXPECT().Save(gomock.Any()).Return(1, nil)
+
+	feature := featureCreateUser(unitofworkMock)
+	userDTO := NewGenerateCreateUserRequestDTO().UseInvalidPassword().Build()
+
+	// Act
+	response, err := feature.CreateUser(*userDTO)
+
+	// Assert
+	assert.Nil(t, response)
+	assert.Error(t, err)
+}
+
+func Test_CreateUser_InvalidParamsForCreateContactEntity(t *testing.T) {
+	// Arrange
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	unitofworkMock, userRepositoryMock, credentialRepositoryMock, _ := setupRepositoriesMock(ctrl)
+	unitofworkMock.EXPECT().Begin().Return(nil)
+	unitofworkMock.EXPECT().Rollback().Return(nil)
+
+	userRepositoryMock.EXPECT().Save(gomock.Any()).Return(1, nil)
+	credentialRepositoryMock.EXPECT().Save(gomock.Any()).Return(nil)
+
+	feature := featureCreateUser(unitofworkMock)
+	userDTO := NewGenerateCreateUserRequestDTO().UseInvalidEmail().Build()
+
+	// Act
+	response, err := feature.CreateUser(*userDTO)
+
+	// Assert
+	assert.Nil(t, response)
+	assert.Error(t, err)
+}

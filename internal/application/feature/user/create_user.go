@@ -16,10 +16,7 @@ type UserFeature struct {
 }
 
 func NewUserFeature(
-	UOW uow.IUnitOfWork,
-	userFactory factory.IUserFactory,
-	credentialFactory factory.ICredentialFactory,
-	contactFactory factory.IContactFactory) *UserFeature {
+	UOW uow.IUnitOfWork, userFactory factory.IUserFactory, credentialFactory factory.ICredentialFactory, contactFactory factory.IContactFactory) *UserFeature {
 	return &UserFeature{
 		uow:               UOW,
 		userFactory:       userFactory,
@@ -47,7 +44,6 @@ func (u *UserFeature) CreateUser(userData dto.CreateUserRequestDTO) (*dto.Create
 
 	id, err := u.uow.UserRepository().Save(*user)
 	if err != nil {
-		// Criar um erro default de persistência
 		// Refatorar !!! - Preciso implementar um método que, a partir da persistence, retorno o possível status code e descrição do erro
 		u.uow.Rollback()
 		return nil, &failure.Error{
@@ -95,6 +91,11 @@ func (u *UserFeature) CreateUser(userData dto.CreateUserRequestDTO) (*dto.Create
 			Status:  http.StatusInternalServerError,
 			Message: "internal server error",
 		}
+	}
+
+	err = u.uow.Commit()
+	if err != nil {
+		return nil, err
 	}
 
 	return &dto.CreateUserResponseDTO{
