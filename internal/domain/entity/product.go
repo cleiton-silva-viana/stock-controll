@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"net/http"
 	"stock-controll/internal/domain/failure"
 	"stock-controll/internal/domain/validation"
 	vo "stock-controll/internal/domain/value_object"
@@ -8,7 +9,7 @@ import (
 )
 
 type Product struct {
-	id             int
+	id int
 	name           vo.Name
 	description    string
 	barcode        string
@@ -108,9 +109,12 @@ func (p *ProductBuilder) BrandID(brandID int) *ProductBuilder {
 	return p
 }
 
-func (p *ProductBuilder) Build() (*Product, []error) {
+func (p *ProductBuilder) Build() (*Product, *failure.Fields) {
 	if len(p.errorList) > 0 {
-		return nil, p.errorList
+		return nil, &failure.Fields{
+			Status: http.StatusBadRequest,
+			ErrList: p.errorList,
+		}
 	}
 	return &Product{
 		name:           p.name,

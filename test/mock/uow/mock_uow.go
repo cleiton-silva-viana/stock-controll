@@ -11,7 +11,7 @@ package uowmock
 
 import (
 	reflect "reflect"
-	persistence "stock-controll/internal/infrastructure/persistence"
+	persistence "stock-controll/internal/infrastructure/repository"
 
 	gomock "go.uber.org/mock/gomock"
 )

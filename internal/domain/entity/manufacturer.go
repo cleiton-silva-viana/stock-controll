@@ -1,13 +1,17 @@
 package entity
 
 import (
+	"net/http"
+	"stock-controll/internal/domain/failure"
 	vo "stock-controll/internal/domain/value_object"
 )
 
 type Manufacturer struct {
+	uid int
 	name     *vo.Name
 	category *vo.Name
 	cnpj     *vo.CNPJ
+	contact Contact
 }
 
 type ManufacturerBuilder struct {
@@ -59,10 +63,12 @@ func (m *ManufacturerBuilder) CNPJ(cnpj string) *ManufacturerBuilder {
 	return m
 }
 
-func (m *ManufacturerBuilder) Build() (*Manufacturer, []error) {
+func (m *ManufacturerBuilder) Build() (*Manufacturer, *failure.Fields) {
 	if len(m.errorList) > 0 {
-		return nil, m.errorList
-
+		return nil, &failure.Fields{
+			Status: http.StatusBadRequest,
+			ErrList: m.errorList,
+		}
 	}
 	return &Manufacturer{
 		name:     m.name,

@@ -41,7 +41,7 @@ func (m *MockIUserFactory) EXPECT() *MockIUserFactoryMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockIUserFactory) Create(userData dto.CreateUserDTO) (*entity.User, []error) {
+func (m *MockIUserFactory) Create(userData dto.UserDTO) (*entity.User, []error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", userData)
 	ret0, _ := ret[0].(*entity.User)

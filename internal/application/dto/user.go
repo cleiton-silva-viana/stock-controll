@@ -1,6 +1,6 @@
 package dto
 
-type CreateUserDTO struct {
+type UserDTO struct {
 	Name      string
 	Gender    string
 	BirthDate string
@@ -16,7 +16,8 @@ type CreateUserRequestDTO struct {
 }
 
 type CreateUserResponseDTO struct {
-	ID int
+	UID int
 	Name string
 	Gender string
 }
+

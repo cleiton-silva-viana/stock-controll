@@ -5,6 +5,15 @@ import (
 	"strings"
 )
 
+type Fields struct {
+	Status int
+	ErrList []error
+}
+
+func (e *Fields) Error() string {
+	return fmt.Sprintf("%d, %s", e.Status, "the fields are invalids")
+}
+
 type Field struct {
 	Field       string
 	Description Description

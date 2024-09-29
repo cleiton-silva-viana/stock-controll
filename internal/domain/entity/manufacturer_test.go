@@ -89,7 +89,7 @@ func Test_NewManufacturer(t *testing.T) {
 			//Assert
 			if tt.wantError {
 				assert.Nil(t, manufacturer)
-				assert.Len(t, err, tt.errorQuantityExpected)
+				assert.Len(t, err.ErrList, tt.errorQuantityExpected)
 			} else {
 				assert.Nil(t, err)
 				assert.IsType(t, Manufacturer{}, *manufacturer)

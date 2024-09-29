@@ -1,7 +1,7 @@
 package dto
 
 type CreateCredentialDTO struct {
-	ID int
+	UID int
 	Password string
 }
 

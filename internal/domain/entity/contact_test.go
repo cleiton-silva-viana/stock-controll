@@ -60,7 +60,7 @@ func Test_NewContact(t *testing.T) {
 			// Assert
 			if tt.wantError {
 				assert.Nil(t, contact)
-				assert.Len(t, err, tt.errorQuantityExpected)
+				assert.Len(t, err.ErrList, tt.errorQuantityExpected)
 			} else {
 				assert.Nil(t, err)
 				assert.IsType(t, Contact{}, *contact)

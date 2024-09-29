@@ -1,14 +1,15 @@
 package entity
 
 import (
+	"net/http"
 	"time"
-	
+
 	"stock-controll/internal/domain/failure"
 	vo "stock-controll/internal/domain/value_object"
 )
 
 type Credential struct {
-	id            uint64
+	uid            uint64
 	user_ID       int
 	password_hash []byte
 	password_salt []byte
@@ -17,7 +18,7 @@ type Credential struct {
 	updated_at    time.Time
 }
 
-func NewCredential( user_ID int, password string) (*Credential, []error) {
+func NewCredential(user_ID int, password string) (*Credential, *failure.Fields) {
 	var errorList []error
 
 	if user_ID <= 0 {
@@ -30,7 +31,10 @@ func NewCredential( user_ID int, password string) (*Credential, []error) {
 	}
 
 	if len(errorList) > 0 {
-		return nil, errorList
+		return nil, &failure.Fields{
+			Status: http.StatusBadRequest,
+			ErrList: errorList,
+		}
 	}
 
 	return &Credential{

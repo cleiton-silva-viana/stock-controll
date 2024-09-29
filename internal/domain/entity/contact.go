@@ -1,19 +1,19 @@
 package entity
 
 import (
+	"net/http"
+	"stock-controll/internal/domain/failure"
 	vo "stock-controll/internal/domain/value_object"
 )
 
 type Contact struct {
-	id    int
+	uid    int
 	phone vo.Phone
 	email vo.Email
 }
 
-func NewContact(ID int, email, phone string) (*Contact, []error) {
+func NewContact(uid int, email, phone string) (*Contact, *failure.Fields) {
 	var errorsList []error
-
-	// Validar o ID
 
 	userEmail, err := vo.NewEmail(email)
 	if err != nil {
@@ -26,11 +26,14 @@ func NewContact(ID int, email, phone string) (*Contact, []error) {
 	}
 
 	if len(errorsList) > 0 {
-		return nil, errorsList
+		return nil, &failure.Fields{
+			Status: http.StatusBadRequest,
+			ErrList: errorsList,
+		}
 	}
 
 	return &Contact{
-		id: ID,
+		uid:    uid,
 		email: *userEmail,
 		phone: *userPhone,
 	}, nil

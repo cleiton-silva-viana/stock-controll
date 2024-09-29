@@ -6,7 +6,7 @@ import (
 )
 
 type ICredentialFactory interface {
-	Create(dto.CreateCredentialDTO) (*entity.Credential, []error)
+	Create(dto.CreateCredentialDTO) (*entity.Credential, error)
 }
 
 type CredentialFactory struct{}
@@ -15,10 +15,10 @@ func NewCredentialFactory() *CredentialFactory {
 	return &CredentialFactory{}
 }
 
-func (c *CredentialFactory) Create(credential dto.CreateCredentialDTO) (*entity.Credential, []error) {
-	entity, errors := entity.NewCredential(credential.ID, credential.Password)
-    if len(errors) > 0 {
-        return nil, errors
+func (c *CredentialFactory) Create(credential dto.CreateCredentialDTO) (*entity.Credential, error) {
+	entity, err := entity.NewCredential(credential.UID, credential.Password)
+    if err != nil {
+        return nil, err
     }
     return entity, nil
 }

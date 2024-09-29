@@ -2,24 +2,30 @@ package entity
 
 import (
 	"fmt"
+	"net/http"
 	"stock-controll/internal/domain/failure"
 	vo "stock-controll/internal/domain/value_object"
 )
 
+
 type User struct {
-	id         int
-	// firstName vo.Name
-	// lastName vo.Name
-	Name       vo.Name
+	uid         int
+	firstName  vo.Name
+	lastName   vo.Name
 	Gender     vo.Gender
 	BirthDate  vo.Date
 	Occupation string
 }
 
-func NewUser(name, gender, birthDate string) (*User, []error) {
+func NewUser(fistName, gender, birthDate string) (*User, *failure.Fields) {
 	var errorsList []error
 
-	nameParsed, err := vo.NameDefaultValidation("name", name)
+	// Criar método para criação de UID 
+	// *** UID v7 ***
+	UID := 0 
+
+
+	fistNameParsed, err := vo.NameDefaultValidation("first name", fistName)
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
@@ -42,22 +48,30 @@ func NewUser(name, gender, birthDate string) (*User, []error) {
 	}
 
 	if len(errorsList) > 0 {
-		return nil, errorsList
+		return nil, &failure.Fields{
+			Status:  http.StatusBadRequest,
+			ErrList: errorsList,
+		}
 	}
 
 	return &User{
-		Name:      *nameParsed,
+		uid: UID,
+		firstName: *fistNameParsed,
 		Gender:    *genderParsed,
 		BirthDate: *dateParsed,
 	}, nil
 }
 
+func (u *User) GetUID() int {
+	return u.uid
+}
+
 func (u *User) GetName() string {
-	nameParsed := fmt.Sprint(u.Name)
+	nameParsed := fmt.Sprint(u.firstName, u.lastName)
 	return nameParsed
 }
 
-func (u *User) GetGender() string { 
+func (u *User) GetGender() string {
 	genderParsed := fmt.Sprint(u.Gender)
 	return genderParsed
 }

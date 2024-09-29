@@ -138,7 +138,7 @@ func Test_NewProduct(t *testing.T) {
 			// Assert
 			if tt.wantError {
 				assert.Nil(t, product)
-				assert.Len(t, err, tt.errorQuantityExpected)
+				assert.Len(t, err.ErrList, tt.errorQuantityExpected)
 			} else {
 				assert.Nil(t, err)
 				assert.IsType(t, Product{}, *product)

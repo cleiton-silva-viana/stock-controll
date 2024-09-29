@@ -1,11 +1,13 @@
 package entity
 
-import(
+import (
+	"net/http"
+	"stock-controll/internal/domain/failure"
 	vo "stock-controll/internal/domain/value_object"
 )
 
 type Supplier struct {
-	id int
+	uid int
 	name vo.Name
 	CNPJ vo.CNPJ
 	contactBilling Contact
@@ -53,8 +55,9 @@ func (s *SupplierBuilder) Indentity(name, CNPJ string) *SupplierBuilder {
 
 func (s *SupplierBuilder) ContactBilling(ID int, email, phone string) *SupplierBuilder {
 	contact, err := NewContact(ID, email, phone)
+
 	if err != nil {
-		s.errorList = append(s.errorList, err...)
+		s.errorList = append(s.errorList, err)
 		return s
 	}
 	s.contactBilling = *contact
@@ -64,7 +67,7 @@ func (s *SupplierBuilder) ContactBilling(ID int, email, phone string) *SupplierB
 func (s *SupplierBuilder) ContactPurschase(ID int, email, phone string) *SupplierBuilder {
 	contact, err := NewContact(ID, email, phone)
 	if err != nil {
-		s.errorList = append(s.errorList, err...)
+		s.errorList = append(s.errorList, err)
 		return s
 	}
 	s.contactBilling = *contact
@@ -75,9 +78,12 @@ func (s *SupplierBuilder) Sellers(sellers []SellerSupplier) *SupplierBuilder {
 	return s
 }
 
-func (s *SupplierBuilder) Build() (*Supplier, []error) {
+func (s *SupplierBuilder) Build() (*Supplier, *failure.Fields) {
 	if len(s.errorList) > 0 {
-		return nil, s.errorList
+		return nil, &failure.Fields{
+			Status: http.StatusBadRequest,
+			ErrList: s.errorList,
+		}
 	}
 	return &Supplier{
 		name: s.name,

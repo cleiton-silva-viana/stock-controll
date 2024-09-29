@@ -1,24 +1,20 @@
 package unitofwork
 
 import (
-	"fmt"
 	"database/sql"
-
-	"stock-controll/internal/infrastructure/persistence"
+	"fmt"
 )
 
 type IUnitOfWork interface {
 	Begin() error
 	Commit() error
 	Rollback() error
-	UserRepository() persistence.ISQLUser
-	CredentialRepository() persistence.ISQLCredential
-	ContactRepository() persistence.ISQLContact
 }
 
 type UnitOfWork struct {
 	db *sql.DB
 	tx *sql.Tx
+	rollbackAttempt bool
 }
 
 func NewUnitOfWork(DB *sql.DB) UnitOfWork {
@@ -33,7 +29,7 @@ func (uow *UnitOfWork) Begin() error {
 	if err != nil {
 		return &UnitOfworkError{
 			Operation: "begin",
-			Message: err.Error(),
+			Message:   err.Error(),
 		}
 	}
 	uow.tx = tx
@@ -41,6 +37,10 @@ func (uow *UnitOfWork) Begin() error {
 }
 
 func (uow *UnitOfWork) Commit() error {
+	if uow.rollbackAttempt {
+		return CommitNotAllowed
+	}
+
 	if uow.tx == nil {
 		return noTransactionInProgress("commit")
 	}
@@ -56,18 +56,6 @@ func (uow *UnitOfWork) Rollback() error {
 	err := uow.tx.Rollback()
 	uow.tx = nil
 	return err
-}
-
-func (uow *UnitOfWork) UserRepository() persistence.ISQLUser {
-	return persistence.NewSQLUser(uow.db)
-}
-
-func (uow *UnitOfWork) CredentialRepository() persistence.ISQLCredential {
-	return persistence.NewSQLCredential(uow.db)
-}
-
-func (uow *UnitOfWork) ContactRepository() persistence.ISQLContact {
-	return persistence.NewSQLContact(uow.db)
 }
 
 type UnitOfworkError struct {
@@ -86,10 +74,16 @@ var transactionAlreadyInProgress = &UnitOfworkError{
 	Tip:       "finalizer of the ongoing transaction before starting a new transaction",
 }
 
+var CommitNotAllowed = &UnitOfworkError{
+	Operation: "Commit",
+	Message:   "The commit cannot be performed, the rollback command has already been used in this transaction",
+	Tip:       "finalizer of the ongoing transaction before starting a new transaction",
+}
+
 var noTransactionInProgress = func(transaction string) *UnitOfworkError {
 	return &UnitOfworkError{
 		Operation: transaction,
 		Message:   fmt.Sprintf("no transactions to %s", transaction),
 		Tip:       "check if transactions are recorded in the sql.Tx attribute",
 	}
-} 
+}

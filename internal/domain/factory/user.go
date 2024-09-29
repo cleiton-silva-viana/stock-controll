@@ -6,7 +6,7 @@ import (
 )
 
 type IUserFactory interface {
-	Create(userData dto.CreateUserDTO) (*entity.User, []error)
+	Create(userData dto.UserDTO) (*entity.User, error)
 }
 
 type UserFactory struct {}
@@ -15,10 +15,10 @@ func NewUserFactory() *UserFactory {
 	return &UserFactory{}
 }
 
-func(u *UserFactory) Create(user dto.CreateUserDTO) (*entity.User, []error) {
-	entity, errors := entity.NewUser(user.Name, user.Gender, user.BirthDate)
-    if len(errors) > 0 {
-        return nil, errors
+func(u *UserFactory) Create(user dto.UserDTO) (*entity.User, error) {
+	entity, err := entity.NewUser(user.Name, user.Gender, user.BirthDate)
+    if err != nil {
+        return nil, err
     }
     return entity, nil
 }

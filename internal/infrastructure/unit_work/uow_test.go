@@ -49,7 +49,7 @@ func Test_UnitOfWork_Begin(t *testing.T) {
 
 			// Assert
 			if tt.wantError {
-				assert.ErrorIs(t, mock.ExpectationsWereMet(), tt.expectedError)
+				assert.ErrorIs(t, err, tt.expectedError)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -84,12 +84,13 @@ func Test_UnitOfWork_Commit(t *testing.T) {
 			uow := NewUnitOfWork(db)
 			uow.Begin()
 
-			// Act
 			if tt.wantError {
 				uow.tx = nil
 			} else {
 				uow.tx.Exec(tt.query)
 			}
+
+			// Act
 			err = uow.Commit()
 
 			// Assert

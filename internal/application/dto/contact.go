@@ -1,13 +1,13 @@
 package dto
 
 type CreateContactDTO struct {
-	ID int
+	UID int
 	Phone string
 	Email string
 }
 
 type UpdateContactDTO struct {
-	ID int
+	UID int
 	Email string
 	Phone string
 }

@@ -3,7 +3,7 @@ package userfeature
 import (
 	"stock-controll/internal/application/dto"
 	"stock-controll/internal/domain/factory"
-	persistencemock "stock-controll/test/mock/persistence"
+	repositorymock "stock-controll/test/mock/repository"
 	uowmock "stock-controll/test/mock/uow"
 	"testing"
 
@@ -12,22 +12,27 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func setupRepositoriesMock(ctrl *gomock.Controller) (*uowmock.MockIUnitOfWork, *persistencemock.MockISQLUser, *persistencemock.MockISQLCredential, *persistencemock.MockISQLContact) {
+func setupRepositoriesMock(ctrl *gomock.Controller) (
+	*uowmock.MockIUnitOfWork,
+	*repositorymock.MockIUserRepository,
+	*repositorymock.MockICredentialRepository,
+	*repositorymock.MockIContactRepository,
+) {
 	unitOfWorkMock := uowmock.NewMockIUnitOfWork(ctrl)
 
-	userRepositoryMock := persistencemock.NewMockISQLUser(ctrl)
-	credentialRepositoryMock := persistencemock.NewMockISQLCredential(ctrl)
-	contactRepositoryMock := persistencemock.NewMockISQLContact(ctrl)
+	userRepositoryMock := repositorymock.NewMockIUserRepository(ctrl)
+	credentialRepositoryMock := repositorymock.NewMockICredentialRepository(ctrl)
+	contactRepositoryMock := repositorymock.NewMockIContactRepository(ctrl)
 
-	unitOfWorkMock.EXPECT().UserRepository().Return(userRepositoryMock).MaxTimes(1)
-	unitOfWorkMock.EXPECT().CredentialRepository().Return(credentialRepositoryMock).MaxTimes(1)
-	unitOfWorkMock.EXPECT().ContactRepository().Return(contactRepositoryMock).MaxTimes(1)
+	unitOfWorkMock.EXPECT().UserRepository().Return(userRepositoryMock).AnyTimes().MaxTimes(1)
+	unitOfWorkMock.EXPECT().CredentialRepository().Return(credentialRepositoryMock).AnyTimes().MaxTimes(1)
+	unitOfWorkMock.EXPECT().ContactRepository().Return(contactRepositoryMock).AnyTimes().MaxTimes(1)
 
 	return unitOfWorkMock, userRepositoryMock, credentialRepositoryMock, contactRepositoryMock
 }
 
-func featureCreateUser(unitOfWorkMock *uowmock.MockIUnitOfWork) *UserFeature {
-	return &UserFeature{
+func featureCreateUser(unitOfWorkMock *uowmock.MockIUnitOfWork) *CreateUserFeature {
+	return &CreateUserFeature{
 		uow:               unitOfWorkMock,
 		userFactory:       &factory.UserFactory{},
 		credentialFactory: &factory.CredentialFactory{},
@@ -105,7 +110,6 @@ func Test_CreateUser_InvalidParamsForCreateUserEntity(t *testing.T) {
 	defer ctrl.Finish()
 
 	unitofworkMock, _, _, _ := setupRepositoriesMock(ctrl)
-	unitofworkMock.EXPECT().Begin().Return(nil)
 
 	feature := featureCreateUser(unitofworkMock)
 	userDTO := NewGenerateCreateUserRequestDTO().UseInvalidName().Build()
