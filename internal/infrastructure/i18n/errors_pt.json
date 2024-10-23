@@ -1,0 +1,121 @@
+{
+    "ValidationErrors": {
+        "ERR_FIELD_CANNOT_BE_EMPTY": {
+            "Message": "O campo %s não pode estar vazio.",
+            "Solution": "Por favor, insira um valor válido para o campo %s."
+        },
+        "ERR_FIELD_INVALID_FORMAT": {
+            "Message": "O formato do %s informado é inválido.",
+            "Solution": "O %s deve seguir o formato padrão (ex: %s)."
+        },
+        "ERR_FIELD_INVALID_LENGTH": {
+            "Message": "O %s deve ter exatamente %d dígitos.",
+            "Solution": "Verifique se o %s informado possui o comprimento correto."
+        },
+        "ERR_FIELD_CONTAINS_SPECIAL_CHARACTERS": {
+            "Message": "O %s contém caracteres não permitidos.",
+            "Solution": "Remova os caracteres especiais do %s."
+        },
+        "ERR_FIELD_CONTAINS_NUMBERS": {
+            "Message": "O %s informado não pode conter números.",
+            "Solution": "Certifique-se de que o %s está preenchido corretamente, sem números."
+        },
+        "ERR_FIELD_CONTAINS_LETTERS": {
+            "Message": "O %s é inválido porque contém letras.",
+            "Solution": " favor, insira um %s que não contenha letras."
+        },
+        "ERR_FIELD_TOO_SHORT": {
+            "Message": "O %s informado é muito curto.",
+            "Solution": "Aumente o comprimento do %s para pelo menos %d caracteres."
+        },
+        "ERR_FIELD_TOO_LONG": {
+            "Message": "O %s informado é muito longo.",
+            "Solution": "Verifique se a %s não excede o limite de %d caracteres."
+        },
+        "ERR_FIELD_INVALID": {
+            "Message": "O %s informado é inválido.",
+            "Solution": "Verifique se o %s está correto e se é um dos %s permitidos: %s."
+        },
+        "ERR_FIELD_ALREADY_REGISTERED": {
+            "Message": "O %s informado já está cadastrado.",
+            "Solution": "Tente uma combinação diferente para o campo %s"
+        },
+        "ERR_FIELD_INVALID_CHECK_DIGITS": {
+            "Message": "Os dígitos verificadores do %s informado são inválidos.",
+            "Solution": "Verifique se os dígitos verificadores estão corretos e se o %s é válido."
+        },
+        "ERR_FIELD_NOT_FOUND": {
+            "Message": "O %s solicitado não foi encontrada.",
+            "Solution": "Verifique se o identificador do %s está correto."
+        },
+        "ERR_FIELD_OUT_OF_RANGE": {
+            "Message": "O valor do %s deve estar entre %d e %d.",
+            "Solution": "Por favor, insira um valor dentro do intervalo permitido."
+        },
+        "ERR_FIELD_UNSUPPORTED_TYPE": {
+            "Message": "O tipo de %s informado não é suportado.",
+            "Solution": "Por favor, insira um %s de um tipo suportado."
+        },
+        "ERR_FIELD_NOT_UNIQUE": {
+            "Message": "O %s deve ser único, mas já existe um registro com esse valor.",
+            "Solution": "Tente um valor diferente para o campo %s."
+        },
+        "ERR_PASSWORD_MISSING_LETTERS": {
+            "Message": "A senha informada não contém letras.",
+            "Solution": "Verifique se a senha inclui pelo menos uma letra maiúscula ou minúscula.",
+            "Details": "A senha deve conter pelo menos uma letra para ser considerada válida."
+        },
+        "ERR_PASSWORD_MISSING_LOWERCASE": {
+            "Message": "A senha informada não contém letras minúsculas.",
+            "Solution": "Inclua pelo menos uma letra minúscula na senha.",
+            "Details": "Senhas válidas devem conter pelo menos uma letra minúscula (a-z)."
+        },
+        "ERR_PASSWORD_MISSING_UPPERCASE": {
+            "Message": "A senha informada não contém letras maiúsculas.",
+            "Solution": "Inclua pelo menos uma letra maiúscula na senha.",
+            "Details": "Senhas válidas devem conter pelo menos uma letra maiúscula (A-Z)."
+        },
+        "ERR_PASSWORD_MISSING_NUMBERS": {
+            "Message": "A senha informada não contém números.",
+            "Solution": "Inclua pelo menos um número na senha.",
+            "Details": "Senhas válidas devem conter pelo menos um número (0-9)."
+        },
+        "ERR_PASSWORD_MISSING_SPECIAL_CHARACTERS": {
+            "Message": "A senha informada não contém caracteres especiais.",
+            "Solution": "Inclua pelo menos um caractere especial na senha.",
+            "Details": "Senhas válidas devem conter pelo menos um caractere especial, como @, #, $, %, etc."
+        },
+        "ERR_PASSWORD_CONTAINS_WHITESPACE": {
+            "Message": "A senha informada não pode conter espaços em branco.",
+            "Solution": "Remova quaisquer espaços em branco da senha.",
+            "Details": "Senhas válidas não devem ter espaços em branco. Verifique e ajuste conforme necessário."
+        },
+        "ERR_PASSWORD_EQUALS_USERNAME": {
+            "Message": "A senha informada não pode ser igual ao nome de usuário.",
+            "Solution": "Escolha uma senha diferente do seu nome de usuário.",
+            "Details": "Senhas não devem ser iguais ao nome de usuário ou e-mail. Isso aumenta a segurança."
+        },
+        "ERR_PASSWORD_EQUALS_PREVIOUS": {
+            "Message": "A nova senha não pode ser igual à senha anterior.",
+            "Solution": "Escolha uma senha diferente da senha que você usou anteriormente.",
+            "Details": "Para garantir a segurança, a nova senha deve ser diferente da senha anterior."
+        },
+        "ERR_SALT_GENERATION_FAILED": {
+            "Message": "Ocorreu um erro ao gerar o salt para a senha.",
+            "Solution": "Tente novamente e verifique se o sistema está funcionando corretamente.",
+            "Details": "Um erro inesperado ocorreu durante a geração do salt. Isso pode ser causado por problemas de sistema ou configuração."
+        },
+        "ERR_USER_BIRTH_DATE_TOO_RECENT": {
+            "Message": "A data de nascimento informada indica que a pessoa é menor de 18 anos.",
+            "Solution": "Verifique se a data de nascimento está correta e se a pessoa tem pelo menos 18 anos."
+        },
+        "ERR_USER_BIRTH_DATE_TOO_OLD": {
+            "Message": "A data de nascimento informada indica que a pessoa tem mais de 100 anos.",
+            "Solution": "Verifique se a data de nascimento está correta e se a pessoa tem no máximo 100 anos."
+        },
+        "ERR_USER_FUTURE_BIRTH_DATE": {
+            "Message": "A data de nascimento não pode ser uma data futura.",
+            "Solution": "Verifique se a data de nascimento informada é anterior à data atual."
+        }
+    }
+}
