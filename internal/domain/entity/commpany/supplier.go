@@ -1,25 +1,26 @@
-package entity
+package commpany
 
 import (
 	"time"
 
 	"stock-controll/internal/domain/entity/address"
-	"stock-controll/internal/domain/entity/common"
-	validationError "stock-controll/internal/domain/entity/error"
+	validationError "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+
 	"stock-controll/internal/domain/entity/user"
 )
 
-type supplier struct {
-	company
+type Supplier struct {
+	company            Company
 	sellers            map[string]user.IUser
 	paymnetsConditions string
 }
 
-func NewSupplier(name, cnpj, billingEmail, billingPhone, purchaseEmail, purchasePhone string, addr address.IAddress) (*supplier, validationError.IValidationError) {
-	var supplierErrors = validationError.NewValidationError("supplier")
-	var supplierInstance = supplier{
-		company: company{
-			uuid:   common.GenerateUUID(),
+func NewSupplier(name, cnpj, billingEmail, billingPhone, purchaseEmail, purchasePhone string, addr address.IAddress) (*Supplier, error) {
+	var supplierErrors = validationError.New("supplier")
+	var supplierInstance = Supplier{
+		company: Company{
+			uuid:   uuid.New(),
 			status: active,
 		},
 		sellers: make(map[string]user.IUser),
@@ -40,18 +41,18 @@ func NewSupplier(name, cnpj, billingEmail, billingPhone, purchaseEmail, purchase
 
 }
 
-func (s *supplier) AddSaller(saller user.IUser) {
-	s.sellers[saller.GetUUID()] = saller
+func (s *Supplier) AddSaller(saller user.IUser) {
+	s.sellers[saller.UUID()] = saller
 }
 
-func (s *supplier) RemoveSaller(uuid string) {
+func (s *Supplier) RemoveSaller(uuid string) {
 	_, exist := s.sellers[uuid]
 	if exist {
 		delete(s.sellers, uuid)
 	}
 }
 
-func (s *supplier) GetSallers() []user.IUser {
+func (s *Supplier) Sallers() []user.IUser {
 	var sellers = make([]user.IUser, 0, len(s.sellers))
 	for _, seller := range s.sellers {
 		sellers = append(sellers, seller)
@@ -64,7 +65,7 @@ type paymentCondition string
 const ()
 
 // TODO: imnplementar
-func (s *supplier) SetPaymentCondition() {
+func (s *Supplier) SetPaymentCondition() {
 
 }
 

@@ -11,5 +11,5 @@ func NewcontactFactory() *ContactFactory {
 }
 
 func (c *ContactFactory) Create(uuid, email, phone string) (contactEntity.IContact, error) {
-	return contactEntity.NewContact(uuid, email, phone)
+	return contactEntity.New(email, phone)
 }

@@ -1,73 +1,61 @@
-package entity
+package commpany
 
 import (
-	addressEntity "stock-controll/internal/domain/entity/address"
-	"stock-controll/test/unitary"
 	"strings"
 	"testing"
+	
+	"stock-controll/internal/domain/entity/address"
+	"stock-controll/test/unitary"
 
 	"github.com/stretchr/testify/assert"
 )
 
-type companyData struct {
-	name          string
-	cnpj          string
-	billingEmail  string
-	billingPhone  string
-	purchaseEmail string
-	purchasePhone string
-}
-
-var hyundai = companyData{
-	name:          unitary.Fake.Company().Name(),
-	cnpj:          "46.318.856/0001-00",
-	billingEmail:  unitary.Fake.Internet().CompanyEmail(),
-	billingPhone:  "(49)2524-2218",
-	purchaseEmail: unitary.Fake.Internet().CompanyEmail(),
-	purchasePhone: "(74)3017-4666",
-}
-
-func newCompany() company {
-	return company{}
+var data = Config{
+	Name:          unitary.Fake.Company().Name(),
+	CNPJ:          "46.318.856/0001-00",
+	// BillingEmail:  unitary.Fake.Internet().CompanyEmail(),
+	// BillingPhone:  "(49)2524-2218",
+	// PurchaseEmail: unitary.Fake.Internet().CompanyEmail(),
+	// PurchasePhone: "(74)3017-4666",
 }
 
 
-var addr, _ = addressEntity.NewAddress("rua canudos", "rio de janeiro", "rio de janeiro", "21500-300", "apartamaento 202", 252)
-
-func setCompany(handler func(cd companyData) ) companyData {
-	var data = hyundai
-	handler(data)
-	return data
+var addrConfig = address.Config{
+	Number: 1,
+	Street: "rua canudos",
+	City: "rio de janeiro",
+	State: "rio de janeiro",
+	PostalCode: "21500-300",
+	Complement: "apartamaento 202",
 }
 
-func Test_company_NoError(t *testing.T) {
+func TestCompanyNoError(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	testCases := []unitary.TestField[companyData]{
+	testCases := []unitary.TestField[Config]{
 		{
-			TestDescription: "name length is minimum allowed",
-			Handler:         func(cd companyData) { cd.name = strings.Repeat("a", companyNameMinLength) },
+			Description: "name length is minimum allowed",
+			Handler:         func(c *Config) { c.Name = strings.Repeat("a", companyNameMinLength) },
 		},
 		{
-			TestDescription: "name length is maximum allowed",
-			Handler:         func(cd companyData) { cd.name = strings.Repeat("b", companyNameMaxLength) },
+			Description: "name length is maximum allowed",
+			Handler:         func(c *Config) { c.Name = strings.Repeat("b", companyNameMaxLength) },
 		},
 		{
-			TestDescription: "name contain special characters",
-			Handler:         func(cd companyData) { cd.name = "b&b Hammer" },
+			Description: "name contain special characters",
+			Handler:         func(c *Config) { c.Name = "b&b Hammer" },
 		},
 		{
-			TestDescription: "name contain number",
-			Handler:         func(cd companyData) { cd.name = "1st price" },
+			Description: "name contain number",
+			Handler:         func(c *Config) { c.Name = "1st price" },
 		},
 	}
 
-	for _, tt := range testCases {
-		t.Run(tt.TestDescription, func(t *testing.T) {
-			var companyInstance = company{}
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
 			var data = hyundai
-			tt.Handler(data)
+			test.Handler(&data)
 
 			// Assert
 			assert.Nil(t, companyInstance.SetName(data.name))
@@ -78,34 +66,35 @@ func Test_company_NoError(t *testing.T) {
 			assert.Nil(t, companyInstance.SetPurchasePhone(data.purchasePhone))
 			assert.Nil(t, companyInstance.SetBillingContact(data.billingEmail, data.billingPhone))
 			assert.Nil(t, companyInstance.SetPurchaseContact(data.purchaseEmail, data.purchasePhone))
-			assert.Equal(t, data.name, companyInstance.GetName())
-			assert.Equal(t, data.cnpj, companyInstance.GetCNPJ())
-			assert.Equal(t, data.billingEmail, companyInstance.GetBillingEmail())
-			assert.Equal(t, data.billingPhone, companyInstance.GetBillingPhone())
-			assert.Equal(t, data.purchaseEmail, companyInstance.GetPurchaseEmail())
-			assert.Equal(t, data.purchasePhone, companyInstance.GetPurchasePhone())
+			assert.Equal(t, data.name, companyInstance.Name())
+			assert.Equal(t, data.cnpj, companyInstance.CNPJ())
+			assert.Equal(t, data.billingEmail, companyInstance.BillingEmail())
+			assert.Equal(t, data.billingPhone, companyInstance.BillingPhone())
+			assert.Equal(t, data.purchaseEmail, companyInstance.PurchaseEmail())
+			assert.Equal(t, data.purchasePhone, companyInstance.PurchasePhone())
 		})
 	}
 }
 
-func Test_company_WithError(t *testing.T) {
+func TestCompanyWithError(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	var testNameCases = []unitary.TestField[companyData]{
+	var testNameCases = []unitary.TestField[Config]{
 		{
-			TestDescription: "name with length is short than allowed",
-			Handler:         func(cd companyData) { cd.name = strings.Repeat("a", companyNameMinLength-1) },
+			Description: "name with length is short than allowed",
+			Handler:         func(c *Config) { c.Name = strings.Repeat("a", companyNameMinLength-1) },
 		},
 		{
-			TestDescription: "name with length is greater than allowed",
-			Handler:         func(cd companyData) { cd.name = strings.Repeat("a", companyNameMaxLength+1) },
+			Description: "name with length is greater than allowed",
+			Handler:         func(c *Config) { c.Name = strings.Repeat("a", companyNameMaxLength+1) },
 		},
 	}
-	for _, tt := range testNameCases {
-		t.Run(tt.TestDescription, func(t *testing.T) {
+	for _, test := range testNameCases {
+		t.Run(test.Description, func(t *testing.T) {
+
 			companyInstance := newCompany()
-			data := setCompany(tt.Handler)
+			data := setCompany(test.Handler)
 
 			// Assert
 			assert.NotNil(t, companyInstance.SetName(data.name))
@@ -113,44 +102,44 @@ func Test_company_WithError(t *testing.T) {
 		})
 	}
 
-	var testCNPJCases = []unitary.TestField[companyData]{
+	var testCNPJCases = []unitary.TestField[Config]{
 		{
-			TestDescription: "CNPJ with invalid format",
-			Handler:         func(cd companyData) { cd.cnpj = "00.000.000.0001.22" },
+			Description: "CNPJ with invalid format",
+			Handler:         func(c *Config) { c.CNPJ = "00.000.000.0001.22" },
 		},
 		{
-			TestDescription: "CNPJ length is short than allowed",
-			Handler:         func(cd companyData) { cd.cnpj = "00.000.000/0001-2" },
+			Description: "CNPJ length is short than allowed",
+			Handler:         func(c *Config) { c.CNPJ = "00.000.000/0001-2" },
 		},
 		{
-			TestDescription: "CNPJ length is greater than allowed",
-			Handler:         func(cd companyData) { cd.cnpj = "00.000.000/0001-222" },
+			Description: "CNPJ length is greater than allowed",
+			Handler:         func(c *Config) { c.CNPJ = "00.000.000/0001-222" },
 		},
 	}
-	for _, tt := range testCNPJCases {
-		t.Run(tt.TestDescription, func(t *testing.T) {
+	for _, test := range testCNPJCases {
+		t.Run(test.Description, func(t *testing.T) {
 			companyInstance := newCompany()
-			data := setCompany(tt.Handler)
+			data := setCompany(test.Handler)
 
 			// Assert
 			assert.NotNil(t, companyInstance.SetCNPJ(data.name))
 		})
 	}
 
-	var testBillingContactCases = []unitary.TestField[companyData]{
+	var testBillingContactCases = []unitary.TestField[Config]{
 		{
-			TestDescription: "billing email invalid",
-			Handler:         func(cd companyData) { cd.billingEmail = "    " },
+			Description: "billing email invalid",
+			Handler:         func(c *Config) { c.billingEmail = "    " },
 		},
 		{
-			TestDescription: "billing phone invalid",
-			Handler:         func(cd companyData) { cd.billingPhone = "2188331456" },
+			Description: "billing phone invalid",
+			Handler:         func(c *Config) { c.billingPhone = "2188331456" },
 		},
 	}
-	for _, tt := range testBillingContactCases {
-		t.Run(tt.TestDescription, func(t *testing.T) {
+	for _, test := range testBillingContactCases {
+		t.Run(test.Description, func(t *testing.T) {
 			companyInstance := newCompany()
-			data := setCompany(tt.Handler)
+			data := setCompany(test.Handler)
 
 			// Assert
 			assert.NotNil(t, companyInstance.SetBillingContact(data.billingEmail, data.billingPhone))
@@ -159,18 +148,18 @@ func Test_company_WithError(t *testing.T) {
 
 	var testPurchaseContactCases = []unitary.TestField[companyData]{
 		{
-			TestDescription: "purchase email invalid",
-			Handler:         func(cd companyData) { cd.purchaseEmail = "invalid@mail" },
+			Description: "purchase email invalid",
+			Handler:         func(c *Config) { cd.purchaseEmail = "invalid@mail" },
 		},
 		{
-			TestDescription: "purchase phone invalid",
-			Handler:         func(cd companyData) { cd.purchasePhone = "##########" },
+			Description: "purchase phone invalid",
+			Handler:         func(c *Config) { cd.purchasePhone = "##########" },
 		},
 	}
-	for _, tt := range testPurchaseContactCases {
-		t.Run(tt.TestDescription, func(t *testing.T) {
+	for _, test := range testPurchaseContactCases {
+		t.Run(test.Description, func(t *testing.T) {
 			companyInstance := newCompany()
-			data := setCompany(tt.Handler)
+			data := setCompany(test.Handler)
 
 			// Assert
 			assert.NotNil(t, companyInstance.SetBillingContact(data.purchaseEmail, data.purchasePhone))

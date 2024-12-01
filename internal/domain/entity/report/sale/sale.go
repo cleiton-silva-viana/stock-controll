@@ -1,20 +1,21 @@
-package report
+package sale
 
 import (
-	"stock-controll/internal/domain/entity/common"
-	validationError "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
 	"time"
+
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
-type paymentMethod string
+type PaymentMethod string
 
 const (
-	CreditCard paymentMethod = "credit_card"
-	DebitCard  paymentMethod = "debit_card"
-	Boleto     paymentMethod = "boleto"
-	Cash       paymentMethod = "cash"
-	Other      paymentMethod = "other"
+	CreditCard PaymentMethod = "credit_card"
+	DebitCard  PaymentMethod = "debit_card"
+	Boleto     PaymentMethod = "boleto"
+	Cash       PaymentMethod = "cash"
+	Other      PaymentMethod = "other"
 )
 
 type salesStatus string
@@ -37,48 +38,58 @@ type Product struct {
 }
 
 type ISale interface {
-	GetSaleUUID() string
-	GetTimesTamp() time.Time
-	GetClientUUID() string
-	GetSalerUUID() string
-	GetProducts() []Product
-	GetPaymentMethod() string
-	GetSaleStatus() string
-	GetDiscount() string
-	GetAmout() float32
+	SaleUUID() string
+	TimesTamp() time.Time
+	ClientUUID() string
+	SalerUUID() string
+	Products() []Product
+	PaymentMethod() string
+	SaleStatus() string
+	Discount() string
+	Amout() float32
 	UpdateStatus() error
 	CalculateTotal() error
 }
 
-type sale struct {
+type Sale struct {
+	uuid          string
 	sellerUUID    string
 	clientUUID    string
 	discount      Discount
 	amount        float32
 	products      []Product
-	paymentMethod paymentMethod
+	paymentMethod PaymentMethod
 	status        salesStatus
 	timestamp     time.Time
-	uuid          string
 }
 
-func NewSale(clientUUID, sellerUUID string, products []Product, payment paymentMethod, discountApplyed Discount, status salesStatus) (*sale, validationError.IValidationError) {
-	var saleError = validationError.NewValidationError("sale")
-	var saleInstance = sale{
-		uuid:          common.GenerateUUID(),
-		clientUUID:    clientUUID,
-		sellerUUID:    sellerUUID,
-		products:      products,
-		paymentMethod: payment,
-		discount:      discountApplyed,
-		status:        status,
+type Config struct {
+	SellerUUID    string
+	ClientUUID    string
+	Discount      Discount
+	Products      []Product
+	PaymentMethod PaymentMethod
+	Status        salesStatus
+}
+
+// TODO:  Adicionar validações para payment, discount, status e products
+func New(config Config) (*Sale, error) {
+	var saleError = validationerrors.New("sale")
+	var saleInstance = Sale{
+		uuid:          uuid.New(),
+		clientUUID:    config.ClientUUID,
+		sellerUUID:    config.SellerUUID,
+		products:      config.Products,
+		paymentMethod: config.PaymentMethod,
+		discount:      config.Discount,
+		status:        config.Status,
 		timestamp:     time.Now(),
 	}
 
 	saleError.
-		AddValidationError(common.IsValidUUUID(clientUUID)).
-		AddValidationError(common.IsValidUUUID(sellerUUID)).
-		AddValidationError(saleInstance.validateProducts(products))
+		AddValidationError(uuid.IsValid("client_uuid", config.ClientUUID)).
+		AddValidationError(uuid.IsValid("seller_uuid", config.SellerUUID)).
+		AddValidationError(saleInstance.validateProducts(config.Products))
 
 	if saleError.HasError() {
 		return nil, saleError
@@ -89,29 +100,27 @@ func NewSale(clientUUID, sellerUUID string, products []Product, payment paymentM
 	return &saleInstance, nil
 }
 
-func (s *sale) GetSellerUUID() string {
+func (s *Sale) SellerUUID() string {
 	return s.sellerUUID
 }
 
-func (s *sale) GetClientUUID() string {
+func (s *Sale) ClientUUID() string {
 	return s.clientUUID
 }
 
-func (s *sale) GetDiscount() Discount {
+func (s *Sale) Discount() Discount {
 	return s.discount
 }
 
 // TODO: implementar
-func (s *sale) CalculateDiscount(product Product) {
+func (s *Sale) CalculateDiscount(product Product) {}
 
-}
-
-func (s *sale) GetAmout() float32 {
+func (s *Sale) Amout() float32 {
 	return s.amount
 }
 
 // deve ficar aqui????
-/* func (s *sale) calculateAmount() {
+/* func (s *Sale) calculateAmount() {
 	var amount int
 
 	for _, product := range s.products {
@@ -120,40 +129,46 @@ func (s *sale) GetAmout() float32 {
 
 } */
 
-func (s *sale) CalculateTotal() error { return nil }
+func (s *Sale) CalculateTotal() error {
+	
+}
 
-func (s *sale) GetProducts() []Product {
+func (s *Sale) Products() []Product {
 	return s.products
 }
 
-func (s *sale) GetPaymentMethod() string {
+func (s *Sale) PaymentMethod() string {
 	return string(s.paymentMethod)
 }
 
-func (s *sale) GetStatus() string {
+func (s *Sale) Status() string {
 	return string(s.status)
 }
 
-func (s *sale) SetStatus(newStatus salesStatus) *validation.FieldError {
+// TODO: usar erro genérico para tratamento de erros de atribuíção de status
+func (s *Sale) SetStatus(newStatus salesStatus) error {
 	if s.status == newStatus {
-		return &validation.FieldError{
-			FieldName:  "status",
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "status",
+			CodeError: "",
 		}
 	}
 	s.status = newStatus
 	return nil
 }
 
-func (s *sale) GetTimestamp() time.Time {
+func (s *Sale) Timestamp() time.Time {
 	return time.Now()
 }
 
-func (s *sale) validateProducts(products []Product) *validation.FieldError {
+const ErrNoProductsAssociated = "ERR_NO_PRODUCTS_ASSOCIATED"
+
+// TODO: melhorar checagem...
+func (s *Sale) validateProducts(products []Product) error {
 	if len(products) == 0 {
-		return &validation.FieldError{
-			FieldName:  "products",
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "products",
+			CodeError: ErrNoProductsAssociated,
 		}
 	}
 	return nil

@@ -1,8 +1,8 @@
 package discount
 
 import (
-	validationError "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/validate"
 )
 
 type DiscountSummary struct {
@@ -10,11 +10,11 @@ type DiscountSummary struct {
 	finalTotal           float64 // valor total do produto - desconto
 }
 
-func (ds *DiscountSummary) GetTotalDiscountApplied() float64 {
+func (ds *DiscountSummary) TotalDiscountApplied() float64 {
 	return ds.totalDiscountApplied
 }
 
-func (ds *DiscountSummary) GetFinalTotal() float64 {
+func (ds *DiscountSummary) FinalTotal() float64 {
 	return ds.finalTotal
 }
 
@@ -24,7 +24,7 @@ func (ds *DiscountSummary) Update(discountSummary DiscountSummary) {
 }
 
 type IDiscountCalculationStrategy interface {
-	Apply(price float64, quantityPurchased int) (DiscountSummary, *validation.FieldError)
+	Apply(price float64, quantityPurchased int) (DiscountSummary, *validate.FieldError)
 }
 
 type PercentageDiscount struct {
@@ -32,18 +32,43 @@ type PercentageDiscount struct {
 }
 
 const (
-	minPercentageForDiscount = 1
-	maxPercentageForDiscount = 100
+	minPercentageForDiscount          = 1
+	ErrDiscountPercentageBelowMinimum = "ERR_DISCOUNT_PERCENTAGE_BELOW_MINIMUM"
+	/*
+		ERR_DISCOUNT_PERCENTAGE_BELOW_MINIMUM: {
+			"Message": "A porcentagem de desconto é inferior ao mínimo permitido.",
+			"Solution": "Por favor, verifique a porcentagem de desconto e tente novamente."
+		}
+	*/
+
+	maxPercentageForDiscount            = 100
+	ErrDiscountPercentageExceedsMaximum = "ERR_DISCOUNT_PERCENTAGE_EXCEEDS_MAXIMUM"
+	/*
+		"ERR_DISCOUNT_PERCENTAGE_EXCEEDS_MAXIMUM": {
+			"Message": "A porcentagem do desconto é maior que o máximo permitido.",
+			"Solution": "Por favor, verifique a porcentagem do desconto e tente novamente."
+		}
+	*/
 )
 
-func NewPercentageDiscount(discountPercentage int) (*PercentageDiscount, validationError.IValidationError) {
-	if discountPercentage < minPercentageForDiscount || discountPercentage > maxPercentageForDiscount {
-		return nil, validationError.NewValidationError("percentage_discount").
-			AddValidationError(&validation.FieldError{
-				FieldName:  "percentage",
-				CodeErrors: []string{string(validation.ErrUnknown)},
+func NewPercentageDiscount(discountPercentage int) (*PercentageDiscount, *validationerrors.ValidationError) {
+
+	if discountPercentage < minPercentageForDiscount {
+		return nil, validationerrors.New("percentage_discount").
+			AddValidationError(&validate.FieldError{
+				FieldName: "percentage",
+				CodeError: ErrDiscountPercentageBelowMinimum,
 			})
 	}
+
+	if discountPercentage > maxPercentageForDiscount {
+		return nil, validationerrors.New("percentage_discount").
+			AddValidationError(&validate.FieldError{
+				FieldName: "percentage",
+				CodeError: ErrDiscountPercentageExceedsMaximum,
+			})
+	}
+
 	return &PercentageDiscount{
 		percentage: float64(discountPercentage),
 	}, nil
@@ -64,24 +89,56 @@ type FixedValueDiscount struct {
 }
 
 const (
-	minFixedDiscountValue = 0
-	maxFixedDiscountValue = 100
+	minFixedDiscountValue        = 0
+	ErrDiscountValueBelowMinimum = "ERR_DISCOUNT_VALUE_BELOW_MINIMUM"
+	/*
+		"ERR_DISCOUNT_VALUE_BELOW_MINIMUM": {
+			"Message": "O valor do desconto é menor que o mínimo permitido.",
+			"Solution": "Por favor, verifique o valor do desconto e tente novamente."
+		}
+	*/
+
+	maxFixedDiscountValue          = 100
+	ErrDiscountValueExceedsMaximum = "ERR_DISCOUNT_VALUE_EXCEEDS_MAXIMUM"
+	/*
+		"ERR_DISCOUNT_VALUE_EXCEEDS_MAXIMUM": {
+			"Message": "O valor do desconto é maior que o máximo permitido.",
+			"Solution": "Por favor, verifique o valor do desconto e tente novamente."
+		}
+	*/
+
 )
 
-func NewFixedValueDiscount(discountValue float64) (*FixedValueDiscount, validationError.IValidationError) {
-	if discountValue < minFixedDiscountValue || discountValue > maxFixedDiscountValue {
-		return nil, validationError.NewValidationError("value_discount").
-			AddValidationError(&validation.FieldError{
-				FieldName:  "value",
-				CodeErrors: []string{string(validation.ErrUnknown)},
+func NewFixedValueDiscount(discountValue float64) (*FixedValueDiscount, *validationerrors.ValidationError) {
+	if discountValue < minFixedDiscountValue {
+		return nil, validationerrors.New("value_discount").
+			AddValidationError(&validate.FieldError{
+				FieldName: "value",
+				CodeError: ErrDiscountValueBelowMinimum,
 			})
 	}
+
+	if discountValue > maxFixedDiscountValue {
+		return nil, validationerrors.New("value_discount").
+			AddValidationError(&validate.FieldError{
+				FieldName: "value",
+				CodeError: ErrDiscountValueExceedsMaximum,
+			})
+	}
+
 	return &FixedValueDiscount{
 		discountValue: discountValue,
 	}, nil
 }
 
-func (d *FixedValueDiscount) Apply(price float64, quantityPurchased int) (DiscountSummary, *validation.FieldError) {
+const ErrSubtotalMustBeGreaterThanDiscount = "ERR_SUBTOTAL_MUST_BE_GREATER_THAN_DISCOUNT"
+/*
+	"ERR_SUBTOTAL_MUST_BE_GREATER_THAN_DISCOUNT": {
+		"Message": "O valor do subtotal deve ser maior que o valor do desconto para que ele possa ser aplicado.",
+		"Solution": "Por favor, ajuste o subtotal para que seja maior que o valor do desconto."
+	}
+*/
+func (d *FixedValueDiscount) Apply(price float64, quantityPurchased int) (DiscountSummary, *validate.FieldError) {
 	subtotal := price * float64(quantityPurchased)
 
 	var discounted = DiscountSummary{
@@ -90,8 +147,8 @@ func (d *FixedValueDiscount) Apply(price float64, quantityPurchased int) (Discou
 	}
 
 	if subtotal < d.discountValue {
-		return discounted, &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return discounted, &validate.FieldError{
+			CodeError: ErrSubtotalMustBeGreaterThanDiscount,
 		}
 	}
 
@@ -113,7 +170,7 @@ func NewMaxDiscountStrategy(fixedValue FixedValueDiscount, percentage Percentage
 	}
 }
 
-func (md *MaxDiscountStrategy) Apply(price float64, quantityPurchased int) (DiscountSummary, *validation.FieldError) {
+func (md *MaxDiscountStrategy) Apply(price float64, quantityPurchased int) (DiscountSummary, *validate.FieldError) {
 	fixedSummary, fixedErr := md.fixedValue.Apply(price, quantityPurchased)
 	percentageSummary, _ := md.percentage.Apply(price, quantityPurchased)
 

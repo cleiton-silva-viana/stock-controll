@@ -1,0 +1,50 @@
+# https://golangci-lint.run/usage/linters/#gocritic
+enabled-checks:
+  - badLock
+  - badRegexp
+  - badSorting
+  - badSyncOnceFunc
+  - commentedOutCode
+  - deferInLoop
+  - dynamicFmtString
+  - emptyDecl
+  - evalOrder
+  - externalErrorReassign
+  - nilValReturn
+  - regexpPatten
+  - returnAfterHttpError
+  - sloppyReassign
+  - sprintQuotedString
+  - sqlQuery
+  - syncMapLoadAndDelete
+  - truncateCmp
+  - uncheckedInlineErr
+  - unnecessaryDefer
+  - weakCond
+  # styles checks
+  - boolExprSimplify
+  - builtinShadow
+  - commentedOutImport
+  - deferUnlambda
+  - dupImport 
+  - emptyFallthrough
+  - emptyStringTest
+  - httpNoBody
+  - methodExprCall
+  - nestingReduce
+  - paramTypeCombine
+  - ptrToRefParam
+# performance
+  - appendCombine
+  - equalFold
+  - hugeParam
+  - indexAlloc
+  - rangeValCopy
+  - sliceClear
+  - stringXbytes
+
+enabled-tags:
+  - diagnostic
+  - style
+  - performance
+  - opinionated

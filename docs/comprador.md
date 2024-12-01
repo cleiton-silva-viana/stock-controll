@@ -197,7 +197,13 @@ O método `DeleteProduct` é responsável por permitir que o comprador delete um
 
 
 
+docker run \
+    -v "$(pwd)/internal:/usr/src" \
+    --network="host" \
+    -e SONAR_HOST_URL="http://localhost:9000" \
+    -e SONAR_SCANNER_OPTS="-Dsonar.projectKey=ecommerce" \
+    -e SONAR_TOKEN="sqp_1fcc5052c0c9601e06f3abee31acbb5891231665" \
+    sonarsource/sonar-scanner-cli
 
-
-docker container run --rm --network=host -e SONAR_HOST_URL="http://localhost:9000" -v "./internal:/usr/src" sonarsource/sonar-scanner-cli -Dsonar.projectKey=ec -Dsonar.sources=. -Dsonar.host.url=http://localhost:9000 -Dsonar.login=sqp_c1bbb5939e19fbb5518724e6d15a7c0ba31b20f6
    
+   FW43R523wfwe#$@  

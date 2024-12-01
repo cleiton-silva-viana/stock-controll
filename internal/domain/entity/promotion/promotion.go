@@ -17,99 +17,123 @@ package promotion
 import (
 	"time"
 
-	"stock-controll/internal/domain/entity/common"
-	"stock-controll/internal/domain/entity/discount"
-	validationerrors "stock-controll/internal/domain/entity/error"
 	"stock-controll/internal/domain/entity/product"
-	"stock-controll/internal/domain/validation"
+	"stock-controll/internal/domain/services/discount"
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
 type IPromotion interface {
-	GetUUID() string
-	GetName() string
-	GetDescription() string
-	GetStartDate() time.Time
-	GetEndDate() time.Time
-	GetIsActive() bool
-	GetStatus() promotionStatus
-	CancelPromotion() *validation.FieldError
-	ExtendPromotionDate(date time.Time) *validation.FieldError
+	UUID() string
+	Name() string
+	Description() string
+	StartDate() time.Time
+	EndDate() time.Time
+	IsActive() bool
+	Status() PromotionStatus
+	CancelPromotion() *validate.FieldError
+	ExtendPromotionDate(date time.Time) *validate.FieldError
 	InitPromotion()
 	FinalizePromotion()
 }
 
-type promotionStatus string
+type PromotionStatus string
 
 const (
-	Scheduled  promotionStatus = "scheduled"   // promoção agendada
-	InProgress promotionStatus = "in_progress" // promoção em progresso
-	Ended      promotionStatus = "ended"
-	Canceled   promotionStatus = "canceled"
+	Scheduled  PromotionStatus = "scheduled"   // promoção agendada
+	InProgress PromotionStatus = "in_progress" // promoção em progresso
+	Ended      PromotionStatus = "ended"
+	Canceled   PromotionStatus = "canceled"
 )
 
-type promotion struct {
+type Promotion struct {
 	uuid              string
 	name              string
 	description       string
 	startDate         time.Time
 	endDate           time.Time
-	status            promotionStatus
+	status            PromotionStatus
 	extendedPromotion int
 	discount.IProductSpecificDiscountStrategy
 }
 
-func NewPromotion(name, description string, discount discount.IProductSpecificDiscountStrategy, startDate, endDate time.Time) (*promotion, validationerrors.IValidationError) {
-	promotionErrors := validationerrors.NewValidationError("promotion")
+type ConfigPromotion struct {
+	UUID              string
+	Name              string
+	Description       string
+	StartDate         time.Time
+	EndDate           time.Time
+	Status            PromotionStatus
+	ExtendedPromotion int
+	Discount          discount.IProductSpecificDiscountStrategy // TODO: criar um método Get para etsa propriedade
+}
 
-	promotionErrors.
-		AddValidationError(validateName(name)).
-		AddValidationError(validateDescription(description)).
-		AddValidationError(validateStartDate(startDate, endDate)).
-		AddValidationError(validateEndDate(endDate)).
-		AddValidationError(validateDiscount(discount))
+func New(config ConfigPromotion) (*Promotion, error) {
+	// temos que verificar se a pormoção está sendo recuperada do banco de dados ou se está sendo criada
+
+	promotionErrors := validationerrors.New("promotion").
+		AddValidationError(validateName(config.Name)).
+		AddValidationError(validateDescription(config.Description)).
+		AddValidationError(validateStartDate(config.Status, config.StartDate, config.EndDate)).
+		AddValidationError(validateEndDate(config.Status, config.EndDate)).
+		AddValidationError(validateDiscount(config.Discount))
 
 	if promotionErrors.HasError() {
 		return nil, promotionErrors
 	}
 
-	return &promotion{
-		uuid:                             common.GenerateUUID(),
-		name:                             name,
-		description:                      description,
-		startDate:                        startDate,
-		endDate:                          endDate,
-		IProductSpecificDiscountStrategy: discount,
+	if config.UUID == "" {
+		config.UUID = uuid.New()
+	}
+
+	return &Promotion{
+		uuid:                             config.UUID,
+		name:                             config.Name,
+		description:                      config.Description,
+		startDate:                        config.StartDate,
+		endDate:                          config.EndDate,
+		IProductSpecificDiscountStrategy: config.Discount,
+		status:                           config.Status,
+		extendedPromotion:                config.ExtendedPromotion,
 	}, nil
 }
 
-func (p *promotion) GetUUID() string {
+func (p *Promotion) UUID() string {
 	return p.uuid
 }
 
-func (p *promotion) GetName() string {
+func (p *Promotion) Name() string {
 	return p.name
 }
 
-func (p *promotion) GetDescription() string {
+func (p *Promotion) Description() string {
 	return p.description
 }
 
-func (p *promotion) GetStartDate() time.Time {
+func (p *Promotion) StartDate() time.Time {
 	return p.startDate
 }
 
-func (p *promotion) GetEndDate() time.Time {
+func (p *Promotion) EndDate() time.Time {
 	return p.endDate
 }
 
-func (p *promotion) GetStatus() promotionStatus {
+func (p *Promotion) Status() PromotionStatus {
 	return p.status
 }
 
-func (p *promotion) CancelPromotion() *validation.FieldError {
+func (p *Promotion) ExtendedPromotion() int {
+	return p.extendedPromotion
+}
+
+const ErrPromotionStatusChangeNotAllowed = "ERR_PROMOTION_STATUS_CHANGE_NOT_ALLOWED"
+
+func (p *Promotion) CancelPromotion() error {
 	if p.status == Ended || p.status == Canceled {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "status",
+			CodeError: ErrPromotionStatusChangeNotAllowed,
 		}
 	}
 	p.status = Canceled
@@ -117,38 +141,32 @@ func (p *promotion) CancelPromotion() *validation.FieldError {
 }
 
 const maxDateExtension = time.Hour*24 - 7
+const ErrPromotionExtensionLimitReached = "ERR_PROMOTION_EXTENSION_LIMIT_REACHED"
+const ErrPromotionExtensionExceedsMaximumDays = "ERR_PROMOTION_EXTENSION_EXCEEDS_MAXIMUM_DAYS"
 
 // Notificações: Se a promoção for estendida, pode ser útil notificar os clientes ou usuários do sistema sobre a nova data de término.
 // Limites de Extensão: Você pode querer definir limites sobre quantas vezes uma promoção pode ser estendida ou por quanto tempo. Isso pode ajudar a evitar abusos e garantir que as promoções permaneçam relevantes.
-func (p *promotion) ExtendPromotionDate(newEndDate time.Time) *validation.FieldError {
+func (p *Promotion) ExtendPromotionDate(endDate time.Time) error {
 	if p.extendedPromotion != 0 {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "extension_promotion",
+			CodeError: ErrPromotionExtensionLimitReached,
 		}
 	}
 
-	if newEndDate.After(p.endDate.Add(maxDateExtension)) {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+	if endDate.After(p.endDate.Add(maxDateExtension)) {
+		return &validate.FieldError{
+			FieldName: "extension_promotion",
+			CodeError: ErrPromotionExtensionExceedsMaximumDays,
 		}
 	}
 
 	p.extendedPromotion += 1
-	p.endDate = newEndDate
+	p.endDate = endDate
 	return nil
 }
 
-func (p *promotion) FinalizePromotion() {
-	if p.status != InProgress {
-		return
-	}
-
-	if time.Now().After(p.endDate) {
-		p.status = Ended
-	}
-}
-
-func (p *promotion) InitPromotion() {
+func (p *Promotion) InitPromotion() {
 	if p.status != Scheduled {
 		return
 	}
@@ -158,15 +176,15 @@ func (p *promotion) InitPromotion() {
 	}
 }
 
-func (p *promotion) IsActive() bool {
+func (p *Promotion) IsActive() bool {
 	return p.status == InProgress
 }
 
-func (p *promotion) PromotionIsValidFor(item product.IProduct) bool {
+func (p *Promotion) PromotionIsValidFor(item product.IProduct) bool {
 	return p.IProductSpecificDiscountStrategy.IsProductValid(item)
 }
 
-func (p *promotion) StartPromotionScheduler() {
+func (p *Promotion) StartPromotionScheduler() {
 	go func() {
 		for {
 			time.Sleep(time.Hour * 24)
@@ -175,8 +193,16 @@ func (p *promotion) StartPromotionScheduler() {
 	}()
 }
 
-func (p *promotion) CheckPromotion() {
+func (p *Promotion) CheckPromotion() {}
 
+func (p *Promotion) finalizePromotion() {
+	if p.status != InProgress {
+		return
+	}
+
+	if time.Now().After(p.endDate) {
+		p.status = Ended
+	}
 }
 
 const (
@@ -184,11 +210,11 @@ const (
 	maxLengthForPromotionName = 24
 )
 
-func validateName(name string) *validation.FieldError {
-	return validation.Validate[string]("name", name,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minLengthForPromotionName, maxLengthForPromotionName, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
+func validateName(name string) error {
+	return validate.New[string]("name", name,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minLengthForPromotionName, maxLengthForPromotionName),
+		validate.CheckSpecialChars(validate.Disallow),
 	)
 }
 
@@ -197,10 +223,10 @@ const (
 	maxDescriptionLength = 1000
 )
 
-func validateDescription(description string) *validation.FieldError {
-	return validation.Validate[string]("description", description,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minDescriptionLength, maxDescriptionLength, validation.ErrUnknown),
+func validateDescription(description string) error {
+	return validate.New[string]("description", description,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minDescriptionLength, maxDescriptionLength),
 	)
 }
 
@@ -209,38 +235,56 @@ const (
 	maxPromotionDuration = time.Hour * 24 * 180
 )
 
-/*
-Validação: A validação de promoções é abrangente, mas, assim como no pacote de cupons, a validação de datas pode ser refatorada para evitar repetição.
-*/
+const (
+	ErrPromotionStartDateBeforeCurrent = "ERR_PROMOTION_START_DATE_BEFORE_CURRENT"
+	ErrPromotionStartDateAfterEndDate  = "ERR_PROMOTION_START_DATE_AFTER_END_DATE"
+)
 
-// Tanto inicio quanto fim da promoção devem ocorrer na virada de um dia para outro, ou seja, nos configuramos as promoções para iniciarem a partir da 00:00 de um dia específico e terminar a partir das 00:00 de outro dia posterior
-func validateStartDate(startDate, endDate time.Time) *validation.FieldError {
-	return validation.Validate[time.Time]("start_date", startDate,
-		validation.IsAfterThan(endDate, validation.ErrUnknown),
-		validation.IsAfterThan(time.Now().Add(maxStartDateOffset), validation.ErrUnknown),
+// TODO: melhorar implementação da primeira condicional, veja que é repetida no método abaixo
+func validateStartDate(promotionStatus PromotionStatus, startDate, endDate time.Time) error {
+	//
+	if promotionStatus != InProgress && promotionStatus != Scheduled {
+		return nil
+	}
+
+	if err := validateDate("start_date", endDate); err != nil {
+		return err
+	}
+	return validate.New[time.Time]("start_date", startDate,
+		validate.IsAfterThan(time.Now().Add(maxStartDateOffset), ErrPromotionStartDateBeforeCurrent),
+		validate.IsAfterThan(endDate, ErrPromotionStartDateAfterEndDate),
 	)
 }
 
-func validateEndDate(endDate time.Time) *validation.FieldError {
-	return validation.Validate[time.Time]("end_date", endDate,
-		validation.IsBeforeThan(time.Now(), validation.ErrUnknown),
-		validation.IsAfterThan(time.Now().Add(maxPromotionDuration), validation.ErrUnknown),
+const (
+	ErrPromotionExpirationDateAfterLimit   = "ERR_PROMOTION_EXPIRATION_DATE_AFTER_LIMIT"
+	ErrPromotionExpirationDateBeforeCurret = "ERR_PROMOTION_EXPIRATION_DATE_BEFORE_CURRENT"
+)
+
+func validateEndDate(promotionStatus PromotionStatus, endDate time.Time) error {
+	if err := validateDate("end_date", endDate); err != nil {
+		return err
+	}
+	return validate.New[time.Time]("end_date", endDate,
+		validate.IsBeforeThan(time.Now(), ErrPromotionExpirationDateBeforeCurret),
+		validate.IsAfterThan(time.Now().Add(maxPromotionDuration), ErrPromotionExpirationDateAfterLimit),
 	)
 }
 
-func validateDate(date time.Time) *validation.FieldError {
-	// Data não pode ter minutos e horas setados
-	// Queremos uma data do tipo: 2024-01-01TM00:00:00
+const ErrTimeFieldsMustBeZeroed = "ERR_TIME_FIELDS_MUST_BE_ZEROED"
+
+func validateDate(fieldName string, date time.Time) error {
 	if date.Hour() != 0 || date.Minute() != 0 || date.Second() != 0 {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: fieldName,
+			CodeError: ErrTimeFieldsMustBeZeroed,
 		}
 	}
 	return nil
 }
 
-func validateDiscount(discount discount.IProductSpecificDiscountStrategy) *validation.FieldError {
-	return validation.Validate[any]("discount", discount,
-		validation.IsNil(discount, validation.ErrUnknown),
+func validateDiscount(discount discount.IProductSpecificDiscountStrategy) error {
+	return validate.New[any]("discount", discount,
+		validate.IsNil(discount),
 	)
 }

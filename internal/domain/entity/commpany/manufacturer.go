@@ -1,4 +1,4 @@
-package entity
+package commpany
 
 type Manufacturer struct {
 	ICompany

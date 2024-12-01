@@ -1,5 +1,16 @@
 package coupon
 
+import (
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/test/unitary"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
 /*
 	name string,
 	minPurchaseAmount float64,
@@ -11,77 +22,69 @@ package coupon
 
 */
 
-/* var copounFake = coupon{
-	name:              "PROMOTION",
-	minPurchaseAmount: 100.00,
-	usageLimit:        -1,
-	currentUsage:      0,
-	exclusivity:       AllCustomers,
+var data = Config{
+	Name:              "PROMOTION",
+	MinPurchaseAmount: 100.00,
+	UsageLimit:        -1,
+	Exclusivity:       "all_customers",
 	ExpirationDate:    time.Now().Add(time.Hour * 24),
-	products:          nil,
-	discount:          nil,
 }
 
-var products = make([]string, 0, 1)
-var discountType ,_ = discount.CreatePercentageDiscount(1)
-var discountStrategy = discount.NewDiscountForAllProducts(discountType)
-
-func Test_NewCoupon_NoError(t *testing.T) {
+func TestNewnNoError(t *testing.T) {
 	t.Parallel()
 
-	testCases := []unitary.TestField[coupon]{
+	testCases := []unitary.TestField[Config]{
 		{
-			TestDescription: "create coupon with min name length allowed",
-			Handler:         func(c coupon) { c.name = strings.Repeat("a", minCouponNameLength) },
+			Description: "create coupon with min name length allowed",
+			Handler:     func(c *Config) { c.Name = strings.Repeat("a", minCouponNameLength) },
 		},
 		{
-			TestDescription: "create coupon with max name length allowed",
-			Handler:         func(c coupon) { c.name = strings.Repeat("b", maxCouponNameLength) },
+			Description: "create coupon with max name length allowed",
+			Handler:     func(c *Config) { c.Name = strings.Repeat("b", maxCouponNameLength) },
 		},
 		{
-			TestDescription: "create coupon with letters and numbers in name",
-			Handler:         func(c coupon) { c.name = "PROMOTION2024" },
+			Description: "create coupon with letters and numbers in name",
+			Handler:     func(c *Config) { c.Name = "PROMOTION2024" },
 		},
 		{
-			TestDescription: "coupoun with min purchase amout allowed",
-			Handler:         func(c coupon) { c.minPurchaseAmount = minAmount },
+			Description: "coupoun with min purchase amout allowed",
+			Handler:     func(c *Config) { c.MinPurchaseAmount = minAmount },
 		},
 		{
-			TestDescription: "coupon with min expiration date allowed",
-			Handler:         func(c coupon) { c.ExpirationDate = time.Now().Add(minTimeForCoupon) },
+			Description: "coupon with min expiration date allowed",
+			Handler:     func(c *Config) { c.ExpirationDate = time.Now().Add(minCouponValidityPeriod) },
 		},
 		{
-			TestDescription: "coupon with max expiration date allowed",
-			Handler:         func(c coupon) { c.ExpirationDate = time.Now().Add(maxTimeForCoupon) },
+			Description: "coupon with max expiration date allowed",
+			Handler:     func(c *Config) { c.ExpirationDate = time.Now().Add(maxCouponValidityPeriod) },
 		},
 	}
 
-	for _, tt := range testCases {
-		t.Run(tt.TestDescription, func(t *testing.T) {
-			var data = copounFake
-			tt.Handler(data)
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			copy := data
+			test.Handler(&copy)
 
 			// Act
-			couponInstance, err := NewCoupon(
-				data.name,
-				data.minPurchaseAmount,
-				data.discount, data.ExpirationDate, data.usageLimit, data.exclusivity, products)
+			couponInstance, err := New(copy)
 
 			// Assert
 			assert.Nil(t, err)
 			require.NotNil(t, couponInstance)
-			assert.Equal(t, data.name, couponInstance.GetName())
-			assert.Equal(t, data.minPurchaseAmount, couponInstance.GetMinPurchaseAmount())
-			assert.Equal(t, data.usageLimit, couponInstance.GetUsageLimit())
-			assert.Equal(t, data.exclusivity, couponInstance.GetExclusivity())
-			assert.Equal(t, data.ExpirationDate, couponInstance.GetExpirationDate())
-			
+			require.NoError(t, uuid.IsValid("coupon_uuid", couponInstance.uuid))
+			assert.Equal(t, copy.Name, couponInstance.Name())
+			assert.Equal(t, copy.MinPurchaseAmount, couponInstance.MinPurchaseAmount())
+			assert.Equal(t, copy.UsageLimit, couponInstance.UsageLimit())
+			assert.Equal(t, copy.Exclusivity, couponInstance.Exclusivity())
+			assert.Equal(t, copy.ExpirationDate, couponInstance.ExpirationDate())
+
 			// Como checar se um map contém elementos contidos em um slice?
-			require.NotNil(t, )
-			
-			assert.Contains(t, data.products, couponInstance.HasProduct())
-			assert.Contains(t, )
+			require.NotNil(t, couponInstance.discountScope)
+			assert.Equal(t, couponInstance.currentUsage, 0)
 		})
 	}
 }
- */
+
+func TestRedeemNoError(t *testing.T) {}
+
+func TestRedeemWithError(t *testing.T) {}

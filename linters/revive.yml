@@ -1,0 +1,33 @@
+enable-all-rules: true
+confidence: 0.5
+line-length: 80
+rules:
+  - name: "add-constant"
+    enabled: false
+
+  - name: "argument-limit"
+    enabled: false
+
+  - name: "bool-literal-in-expr"
+    enabled: true
+
+  - name: "call-to-gc"
+    enabled: true
+
+  - name: "cognitive-complexity"
+    enabled: false
+  
+  - name: "confusing-naming"
+    severity: error
+    enabled: true
+  
+  - name: "confusing-results"
+    severity: warning
+    enabled: true
+  
+  - name: "deep-exit"
+    severity: error
+    ebabled: true
+  
+  
+  

@@ -1,10 +1,11 @@
 package tag
 
 import (
-	"stock-controll/internal/domain/entity/common"
-	validationError "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
 	"time"
+
+	validationError "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
 type TagStatus string
@@ -124,11 +125,11 @@ const (
 	Attribute TagType = "attribute"
 	Category  TagType = "category"
 	Brand     TagType = "brand"
-	Seasonal  TagType = "seasonal" // achar nome análogo em inglês
+	Seasonal  TagType = "seasonal"
 )
 
 type Tag struct {
-	id                int
+	uuid              string
 	name              string
 	description       string
 	tagType           TagType
@@ -138,61 +139,64 @@ type Tag struct {
 	associatedProduct map[string]struct{}
 }
 
-func NewTag(name, description string, tagType TagType) (*Tag, *validationError.IValidationError) {
+func New(name, description, tagType string) (*Tag, error) {
 
-	tagErrors := validationError.NewValidationError("tag")
-	tagErrors.
+	tagErrors := validationError.New("tag").
 		AddValidationError(validateName(name)).
 		AddValidationError(validateDescription(description)).
 		AddValidationError(validateTagType(tagType))
 
 	if tagErrors.HasError() {
-		return nil, &tagErrors
+		return nil, tagErrors
 	}
 
 	return &Tag{
+		uuid:        uuid.New(),
 		name:        name,
 		description: description,
 		createdAt:   time.Now(),
 		updatedAt:   time.Now(),
 		status:      Active,
-		tagType:     tagType,
+		tagType:     TagType(tagType),
 	}, nil
 }
 
-func (t *Tag) GetName() string {
+func (t *Tag) UUID() string {
+	return t.uuid
+}
+
+func (t *Tag) Name() string {
 	return t.name
 }
 
-func (t *Tag) GetDescirption() string {
+func (t *Tag) Description() string {
 	return t.description
 }
 
-func (t *Tag) GetTagType() string {
+func (t *Tag) TagType() string {
 	return string(t.tagType)
 }
 
-func (t *Tag) GetCreatedAt() time.Time {
+func (t *Tag) CreatedAt() time.Time {
 	return t.createdAt
 }
 
-func (t *Tag) GetUpdateAt() time.Time {
+func (t *Tag) UpdatedAt() time.Time {
 	return t.updatedAt
 }
 
-func (t *Tag) GetStatus() string {
+func (t *Tag) Status() string {
 	return string(t.status)
 }
 
-func (t *Tag) UpdateTag(name, description string, status TagStatus) *validationError.IValidationError {
-
-	tagErrors := validationError.NewValidationError("tag")
+func (t *Tag) UpdateTag(name, description string, status TagStatus) error {
+	tagErrors := validationError.New("tag")
 	tagErrors.
 		AddValidationError(validateName(name)).
 		AddValidationError(validateDescription(description))
 
 	if tagErrors.HasError() {
-		return &tagErrors
+		return tagErrors
 	}
 
 	t.name = name
@@ -202,7 +206,7 @@ func (t *Tag) UpdateTag(name, description string, status TagStatus) *validationE
 	return nil
 }
 
-func (t *Tag) GetAssociatedProductsUUIDs() []string {
+func (t *Tag) AssociatedProductsUUIDs() []string {
 	uuids := make([]string, 0, len(t.associatedProduct))
 	for uuid := range t.associatedProduct {
 		uuids = append(uuids, uuid)
@@ -210,53 +214,83 @@ func (t *Tag) GetAssociatedProductsUUIDs() []string {
 	return uuids
 }
 
-func (t *Tag) AssociateProduct(productID string) *validation.FieldError {
-	uuidValid := common.IsValidUUUID(productID)
-	if !uuidValid {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+const ErrProductAlreadyAssociatedWithTag = "ERR_PRODUCT_ALREADY_ASSOCIATED_WITH_TAG"
+
+func (t *Tag) AssociateProduct(productUUID string) error {
+	err := uuid.IsValid("product_uuid", productUUID)
+
+	if err != nil {
+		return err
+	}
+
+	if t.IsAssociated(productUUID) {
+		return &validate.FieldError{
+			CodeError: ErrProductAlreadyAssociatedWithTag,
 		}
 	}
 
-	if t.IsAssociated(productID) {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
-		}
-	}
-
-	t.associatedProduct[productID] = struct{}{}
+	t.associatedProduct[productUUID] = struct{}{}
 	t.updatedAt = time.Now()
 	return nil
 }
 
-func (t *Tag) DisassociateProduct(productID string) {
-	if t.IsAssociated(productID) {
-		delete(t.associatedProduct, productID)
+const ErrProductNotAssociatedWithTag = "ERR_PRODUCT_NOT_ASSOCIATED_WITH_TAG"
+
+func (t *Tag) DisassociateProduct(productUUID string) error {
+	if err := uuid.IsValid("product_uuid", productUUID); err != nil {
+		return err
+	}
+	if t.IsAssociated(productUUID) {
+		delete(t.associatedProduct, productUUID)
 		t.updatedAt = time.Now()
+		return nil
+	}
+	return &validate.FieldError{
+		FieldName: "product_uuid",
+		CodeError: ErrProductNotAssociatedWithTag,
 	}
 }
 
-func (t *Tag) IsAssociated(productID string) bool {
-	_, exists := t.associatedProduct[productID]
+func (t *Tag) IsAssociated(productUUID string) bool {
+	_, exists := t.associatedProduct[productUUID]
 	return exists
 }
 
-func validateName(name string) *validation.FieldError {
-	return validation.Validate("name", name,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(3, 50, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
+const (
+	minNameLength = 3
+	maxNameLength = 50
+)
+
+func validateName(name string) error {
+	return validate.New("name", name,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minNameLength, maxNameLength),
+		validate.CheckSpecialChars(validate.Disallow),
 	)
 }
 
-func validateDescription(description string) *validation.FieldError {
-	return validation.Validate("description", description,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(12, 120, validation.ErrUnknown),
+const (
+	minDescriptionLength = 12
+	maxDescriptionLength = 120
+)
+
+func validateDescription(description string) error {
+	return validate.New("description", description,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minDescriptionLength, maxDescriptionLength),
 	)
 }
 
-// TODO: implementar
-func validateTagType(tagType TagType) *validation.FieldError {
-	return nil
+const ErrInvalidTagType = "ERR_INVALID_TAG_TYPE"
+
+func validateTagType(tagType string) error {
+	switch TagType(tagType) {
+	case Promotion, Attribute, Category, Brand, Seasonal:
+		return nil
+	default:
+		return &validate.FieldError{
+			FieldName: "tag_type",
+			CodeError: ErrInvalidTagType,
+		}
+	}
 }

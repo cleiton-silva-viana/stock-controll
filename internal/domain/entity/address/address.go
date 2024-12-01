@@ -2,21 +2,23 @@ package address
 
 import (
 	"regexp"
-	"stock-controll/internal/domain/entity/common"
-	validationError "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
+
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
+// TODO: Adicionar os setters
 type IAddress interface {
-	GetStreet() string
-	GetNumber() int
-	GetComplement() string
-	GetCity() string
-	GetState() string
-	GetPostalCode() string
+	Street() string
+	Number() int
+	Complement() string
+	City() string
+	State() string
+	PostalCode() string
 }
 
-type address struct {
+type Address struct {
 	uuid       string
 	street     string
 	number     int
@@ -26,19 +28,27 @@ type address struct {
 	postalCode string
 }
 
-func NewAddress(street, city, state, postalCode, complement string, number int) (IAddress, validationError.IValidationError) {
-	var err = validationError.NewValidationError("address")
-	var a = address{
-		uuid: common.GenerateUUID(),
+type Config struct {
+	Street     string
+	Number     int
+	Complement string
+	City       string
+	State      string
+	PostalCode string
+}
+
+func New(config Config) (IAddress, *validationerrors.ValidationError) {
+	a := Address{
+		uuid: uuid.New(),
 	}
 
-	err.
-		AddValidationError(a.SetStreet(street)).
-		AddValidationError(a.SetCity(city)).
-		AddValidationError(a.SetState(state)).
-		AddValidationError(a.SetPostalCode(postalCode)).
-		AddValidationError(a.SetComplement(complement)).
-		AddValidationError(a.SetNumber(number))
+	err := validationerrors.New("address").
+		AddValidationError(a.SetStreet(config.Street)).
+		AddValidationError(a.SetCity(config.City)).
+		AddValidationError(a.SetState(config.State)).
+		AddValidationError(a.SetPostalCode(config.PostalCode)).
+		AddValidationError(a.SetComplement(config.Complement)).
+		AddValidationError(a.SetNumber(config.Number))
 
 	if err.HasError() {
 		return nil, err
@@ -46,7 +56,7 @@ func NewAddress(street, city, state, postalCode, complement string, number int) 
 	return &a, nil
 }
 
-func (a *address) GetStreet() string {
+func (a *Address) Street() string {
 	return a.street
 }
 
@@ -55,11 +65,11 @@ const (
 	maxStreetNameLength = 40
 )
 
-func (a *address) SetStreet(street string) *validation.FieldError {
-	err := validation.Validate[string]("street", street,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minStreetNameLength, maxStreetNameLength, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
+func (a *Address) SetStreet(street string) error {
+	err := validate.New[string]("street", street,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minStreetNameLength, maxStreetNameLength),
+		validate.CheckSpecialChars(validate.Disallow),
 	)
 	if err == nil {
 		a.street = street
@@ -67,7 +77,7 @@ func (a *address) SetStreet(street string) *validation.FieldError {
 	return err
 }
 
-func (a *address) GetNumber() int {
+func (a *Address) Number() int {
 	return a.number
 }
 
@@ -76,9 +86,9 @@ const (
 	maxNumberHome = 100000
 )
 
-func (a *address) SetNumber(number int) *validation.FieldError {
-	err := validation.Validate[int]("number", number,
-		validation.IsInRange(minNumberHome, maxNumberHome, validation.ErrUnknown),
+func (a *Address) SetNumber(number int) error {
+	err := validate.New[int]("number", number,
+		validate.IsInRange(minNumberHome, maxNumberHome),
 	)
 	if err == nil {
 		a.number = number
@@ -91,15 +101,15 @@ const (
 	maxComplementLength = 150
 )
 
-func (a *address) GetComplement() string {
+func (a *Address) Complement() string {
 	return a.complement
 }
 
-func (a *address) SetComplement(complement string) *validation.FieldError {
-	err := validation.Validate[string]("complement", complement,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minComplementLength, maxComplementLength, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
+func (a *Address) SetComplement(complement string) error {
+	err := validate.New[string]("complement", complement,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minComplementLength, maxComplementLength),
+		validate.CheckSpecialChars(validate.Disallow),
 	)
 	if err == nil {
 		a.complement = complement
@@ -107,7 +117,7 @@ func (a *address) SetComplement(complement string) *validation.FieldError {
 	return err
 }
 
-func (a *address) GetCity() string {
+func (a *Address) City() string {
 	return a.city
 }
 
@@ -116,11 +126,11 @@ const (
 	maxCityNameLength = 50
 )
 
-func (a *address) SetCity(city string) *validation.FieldError {
-	err := validation.Validate[string]("city", city,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
-		validation.IsLengthInRange(minCityNameLength, maxCityNameLength, validation.ErrUnknown),
+func (a *Address) SetCity(city string) error {
+	err := validate.New[string]("city", city,
+		validate.IsBlank(),
+		validate.CheckSpecialChars(validate.Disallow),
+		validate.IsLengthInRange(minCityNameLength, maxCityNameLength),
 	)
 	if err == nil {
 		a.city = city
@@ -128,7 +138,7 @@ func (a *address) SetCity(city string) *validation.FieldError {
 	return err
 }
 
-func (a *address) GetState() string {
+func (a *Address) State() string {
 	return a.state
 }
 
@@ -137,11 +147,11 @@ const (
 	maxStateNameLength = 60
 )
 
-func (a *address) SetState(state string) *validation.FieldError {
-	err := validation.Validate[string]("state", state,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minStateNameLength, maxStateNameLength, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
+func (a *Address) SetState(state string) error {
+	err := validate.New[string]("state", state,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minStateNameLength, maxStateNameLength),
+		validate.CheckSpecialChars(validate.Disallow),
 	)
 	if err == nil {
 		a.state = state
@@ -149,66 +159,20 @@ func (a *address) SetState(state string) *validation.FieldError {
 	return err
 }
 
-func (a *address) GetPostalCode() string {
+func (a *Address) PostalCode() string {
 	return a.postalCode
 }
 
-// Checar formato de código postal
-func (a *address) SetPostalCode(code string) *validation.FieldError {
+const ErrAddressWithInvalidZipCodeFormat = "ERR_ADDRESS_WITH_INVALID_ZIP_CODE_FORMAT"
+
+func (a *Address) SetPostalCode(code string) error {
 	re := `^\d{5}\-\d{3}$`
-	err := validation.Validate[string]("postal_code", code,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsFormatValid(regexp.MustCompile(re), validation.ErrUnknown),
+	err := validate.New[string]("postal_code", code,
+		validate.IsBlank(),
+		validate.IsFormatValid(regexp.MustCompile(re), ErrAddressWithInvalidZipCodeFormat),
 	)
 	if err == nil {
 		a.postalCode = code
 	}
 	return err
-}
-
-type addressBuilder struct {
-	street     string
-	number     int
-	complement string
-	city       string
-	state      string
-	postalCode string
-}
-
-func NewAddressBuilder() *addressBuilder {
-	return &addressBuilder{}
-}
-
-func (a *addressBuilder) SetStreet(street string) *addressBuilder {
-	a.street = street
-	return a
-}
-
-func (a *addressBuilder) SetNumber(number int) *addressBuilder {
-	a.number = number
-	return a
-}
-
-func (a *addressBuilder) SetComplement(complement string) *addressBuilder {
-	a.complement = complement
-	return a
-}
-
-func (a *addressBuilder) SetCity(city string) *addressBuilder {
-	a.city = city
-	return a
-}
-
-func (a *addressBuilder) SetState(state string) *addressBuilder {
-	a.state = state
-	return a
-}
-
-func (a *addressBuilder) SetPostalCode(postalCode string) *addressBuilder {
-	a.postalCode = postalCode
-	return a
-}
-
-func (a *addressBuilder) Build() (IAddress, validationError.IValidationError) {
-	return NewAddress(a.street, a.city, a.state, a.postalCode, a.complement, a.number)
 }

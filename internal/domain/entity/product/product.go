@@ -5,25 +5,27 @@ package product
 
 import (
 	"image"
-	"stock-controll/internal/domain/entity/common"
-	validationError "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
+
+	"stock-controll/internal/domain/entity/tag"
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
 type IProduct interface {
-	GetUUID() string
-	GetName() string
-	GetPrice() float64
-	GetQuantity() int
-	GetDescription() string
-	GetBarcode() string
-	GetBrandUUID() string
-	GetTags() []Tag
-	GetManufacturerUUID() string
-	GetCategoryUUID() string
+	UUID() string
+	Name() string
+	Price() float64
+	Quantity() int
+	Description() string
+	Barcode() string
+	Tags() []tag.Tag
+	BrandUUID() string
+	ManufacturerUUID() string
+	CategoryUUID() string
 }
 
-type product struct {
+type Product struct {
 	image.Image
 	uuid             string
 	name             string
@@ -35,25 +37,31 @@ type product struct {
 	brandUUID        string
 	manufacturerUUID string
 	categoryUUID     string
-	tags             []Tag
-	status           bool
+	tags             []tag.Tag
 }
 
-func NewProduct(name, description, barcode, brandUUID, manufacturerUUID, categoryUUID string) (IProduct, validationError.IValidationError) {
-	var productError = validationError.NewValidationError("product")
-	var productInstance = product{
-		uuid:   common.GenerateUUID(),
-		status: true,
-		tags:   []Tag{},
+type Config struct {
+	Name             string
+	Description      string
+	Barcode          string
+	BrandUUID        string
+	ManufacturerUUID string
+	CategoryUUID     string
+}
+
+func New(config Config) (IProduct, error) {
+	productInstance := Product{
+		uuid: uuid.New(),
+		tags: make([]tag.Tag, 0),
 	}
 
-	productError.
-		AddValidationError(productInstance.SetName(name)).
-		AddValidationError(productInstance.SetDescription(description)).
-		AddValidationError(productInstance.SetBarcode(barcode)).
-		AddValidationError(productInstance.SetBrandUUID(brandUUID)).
-		AddValidationError(productInstance.SetManufacturerUUID(manufacturerUUID)).
-		AddValidationError(productInstance.SetCategoryUUID(categoryUUID))
+	productError := validationerrors.New("product").
+		AddValidationError(productInstance.SetName(config.Name)).
+		AddValidationError(productInstance.SetDescription(config.Description)).
+		AddValidationError(productInstance.SetBarcode(config.Barcode)).
+		AddValidationError(productInstance.SetBrandUUID(config.BrandUUID)).
+		AddValidationError(productInstance.SetManufacturerUUID(config.ManufacturerUUID)).
+		AddValidationError(productInstance.SetCategoryUUID(config.CategoryUUID))
 
 	if productError.HasError() {
 		return nil, productError
@@ -61,23 +69,23 @@ func NewProduct(name, description, barcode, brandUUID, manufacturerUUID, categor
 	return &productInstance, nil
 }
 
-func (p *product) GetUUID() string {
+func (p *Product) UUID() string {
 	return p.uuid
 }
 
-func (p *product) GetName() string {
+func (p *Product) Name() string {
 	return p.name
 }
 
 const (
-	productNameMinLength = 10
-	productNameMaxLength = 50
+	minNameLength = 10
+	maxNameLength = 50
 )
 
-func (p *product) SetName(name string) *validation.FieldError {
-	err := validation.Validate("name", name,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(productNameMinLength, productNameMaxLength, validation.ErrUnknown),
+func (p *Product) SetName(name string) error {
+	err := validate.New("name", name,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minNameLength, maxNameLength),
 	)
 	if err == nil {
 		p.name = name
@@ -85,26 +93,30 @@ func (p *product) SetName(name string) *validation.FieldError {
 	return err
 }
 
-func (p *product) GetCost() float64 {
+func (p *Product) Cost() float64 {
 	return p.cost
 }
 
 const (
-	minCost = 0.1
-	maxCost = 1000.00
+	minCost                           = 0.1
+	maxCost                           = 900.00
+	ErrProductPurchaseCostOutOfBounds = "ERR_PRODUCT_PURCHASE_COST_OUT_OF_BOUNDS"
 )
 
-func (p *product) SetCost(cost float64) *validation.FieldError {
-	if cost < minCost || cost > maxCost {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
-		}
-	}
-
-	// Verifique se o custo é um número válido
-	if cost != cost { // Verifica se é NaN
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+/*
+Possíveis Vulnerabilidades:
+  - Race Conditions em ambiente concorrente
+  - Precisão de ponto flutuante em cálculos financeiros
+  - Overflow/Underflow em operações matemáticas
+*/
+func (p *Product) SetCost(cost float64) error {
+	err := validate.New("cost", cost,
+		validate.IsInRangeFloat64(minCost, maxCost),
+	)
+	if err != nil {
+		return &validate.FieldError{
+			FieldName: "cost",
+			CodeError: ErrProductPurchaseCostOutOfBounds,
 		}
 	}
 
@@ -112,37 +124,43 @@ func (p *product) SetCost(cost float64) *validation.FieldError {
 	return nil
 }
 
-func (p *product) GetPrice() float64 {
+func (p *Product) Price() float64 {
 	return p.price
 }
 
 const (
-	minPrice = 0.10
-	maxPrice = 1000.00
+	minPrice                       = 0.10
+	maxPrice                       = 1000.00
+	ErrProductSalePriceOutOfBounds = "ERR_PRODUCT_SALE_PRICE_OUT_OF_BOUNDS"
 )
-func (p *product) SetPrice(price float64) *validation.FieldError {
-	if price < minPrice || price > maxPrice {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+
+func (p *Product) SetPrice(price float64) error {
+	err := validate.New("price", price,
+		validate.IsInRangeFloat64(minPrice, maxPrice),
+	)
+	if err != nil {
+		return &validate.FieldError{
+			FieldName: "price",
+			CodeError: ErrProductSalePriceOutOfBounds,
 		}
 	}
 	p.price = price
 	return nil
 }
 
-func (p *product) GetDescription() string {
+func (p *Product) Description() string {
 	return p.description
 }
 
 const (
-	productDescriptionMinLength = 10
-	productDescriptionMaxLength = 500
+	minDescriptionLength = 10
+	maxDescriptionLength = 500
 )
 
-func (p *product) SetDescription(description string) *validation.FieldError {
-	err := validation.Validate("description", description,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(productDescriptionMinLength, productDescriptionMaxLength, validation.ErrUnknown),
+func (p *Product) SetDescription(description string) error {
+	err := validate.New("description", description,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minDescriptionLength, maxDescriptionLength),
 	)
 	if err == nil {
 		p.description = description
@@ -150,67 +168,67 @@ func (p *product) SetDescription(description string) *validation.FieldError {
 	return err
 }
 
-func (p *product) GetTags() []Tag {
-	tags := make([]Tag, len(p.tags))
+func (p *Product) Tags() []tag.Tag {
+	tags := make([]tag.Tag, len(p.tags))
 	copy(tags, p.tags)
 	return tags
 }
 
 const MaxTagsForProduct = 7
+const ErrProductTagLimitExceeded = "ERR_PRODUCT_TAG_LIMIT_EXCEEDED"
 
 // Verificar se a tag é correspondente ao produto
 // Tags que fazem sentido para o produto...
-func (p *product) SetTag(tag Tag) *validation.FieldError {
+func (p *Product) SetTag(newTag tag.Tag) error {
 	if len(p.tags) >= MaxTagsForProduct {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "tag",
+			CodeError: ErrProductTagLimitExceeded,
 		}
 	}
 
 	if len(p.tags) == MaxTagsForProduct {
-		newTags := make([]Tag, len(p.tags), MaxTagsForProduct)
+		newTags := make([]tag.Tag, len(p.tags), MaxTagsForProduct)
 		copy(newTags, p.tags)
 		p.tags = newTags
 	}
 
-	p.tags = append(p.tags, tag)
+	p.tags = append(p.tags, newTag)
 	return nil
 }
 
-func (p *product) GetQuantity() int {
+func (p *Product) Quantity() int {
 	return p.quantity
 }
 
-// não posso subtrair uma quantidade maior que a em estoque
-// Ou seja, não podemos ter estoque negativo
-func (p *product) UpdateQuantity(quantity int) *validation.FieldError {
-	// 10 - 11 = -1 < 0
+const ErrQuantityExceedsStock = "ERR_QUANTITY_EXCEEDS_STOCK"
+
+func (p *Product) SetQuantity(quantity int) error {
 	if p.quantity-quantity < 0 {
-		// quantidade a ser decrementada é menor que a quantidade em estoque
-		return &validation.FieldError{
-			FieldName:  "quantity",
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "quantity",
+			CodeError: ErrQuantityExceedsStock,
 		}
 	}
 	p.quantity = quantity
 	return nil
 }
 
-func (p *product) GetBarcode() string {
+func (p *Product) Barcode() string {
 	return p.barcode
 }
 
 const (
-	productBarcodeMinLength = 6
-	productBarcodeMaxLength = 24
+	minBarcodeLength = 6
+	maxBarcodeLength = 24
 )
 
-func (p *product) SetBarcode(barcode string) *validation.FieldError {
-	var err = validation.Validate("barcode", barcode,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(productBarcodeMinLength, productBarcodeMaxLength, validation.ErrUnknown),
-		validation.CheckLetters(validation.Disallow, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
+func (p *Product) SetBarcode(barcode string) error {
+	var err = validate.New("barcode", barcode,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minBarcodeLength, maxBarcodeLength),
+		validate.CheckLetters(validate.Disallow),
+		validate.CheckSpecialChars(validate.Disallow),
 	)
 	if err == nil {
 		p.barcode = barcode
@@ -218,50 +236,38 @@ func (p *product) SetBarcode(barcode string) *validation.FieldError {
 	return err
 }
 
-func (p *product) GetBrandUUID() string {
+func (p *Product) BrandUUID() string {
 	return p.brandUUID
 }
 
-func (p *product) SetBrandUUID(uuid string) *validation.FieldError {
-	isValid := common.IsValidUUUID(uuid)
-	if isValid {
-		p.brandUUID = uuid
-		return nil
+func (p *Product) SetBrandUUID(BrandUUID string) error {
+	err := uuid.IsValid("brand_uuid", BrandUUID)
+	if err == nil {
+		p.brandUUID = BrandUUID
 	}
-	return &validation.FieldError{
-		FieldName:  "brand_uuid",
-		CodeErrors: []string{string(validation.ErrUnknown)},
-	}
+	return err
 }
 
-func (p *product) GetManufacturerUUID() string {
+func (p *Product) ManufacturerUUID() string {
 	return p.manufacturerUUID
 }
 
-func (p *product) SetManufacturerUUID(uuid string) *validation.FieldError {
-	isValid := common.IsValidUUUID(uuid)
-	if isValid {
-		p.manufacturerUUID = uuid
-		return nil
+func (p *Product) SetManufacturerUUID(ManufacturerUUID string) error {
+	err := uuid.IsValid("manufacturer_uuid", ManufacturerUUID)
+	if err == nil {
+		p.manufacturerUUID = ManufacturerUUID
 	}
-	return &validation.FieldError{
-		FieldName:  "manufacturer_uuid",
-		CodeErrors: []string{string(validation.ErrUnknown)},
-	}
+	return err
 }
 
-func (p *product) GetCategoryUUID() string {
+func (p *Product) CategoryUUID() string {
 	return p.categoryUUID
 }
 
-func (p *product) SetCategoryUUID(uuid string) *validation.FieldError {
-	isValid := common.IsValidUUUID(uuid)
-	if isValid {
-		p.categoryUUID = uuid
-		return nil
+func (p *Product) SetCategoryUUID(CategoryUUID string) error {
+	err := uuid.IsValid("category_uuid", CategoryUUID)
+	if err == nil {
+		p.categoryUUID = CategoryUUID
 	}
-	return &validation.FieldError{
-		FieldName:  "category_uuid",
-		CodeErrors: []string{string(validation.ErrUnknown)},
-	}
+	return err
 }

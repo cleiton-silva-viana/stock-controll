@@ -20,56 +20,51 @@ package validationerrors
 */
 
 import (
-	"sync"
-
-	"stock-controll/internal/domain/validation"
+	"fmt"
+	"stock-controll/internal/domain/services/validate"
 )
 
-type IValidationError interface {
-	AddValidationError(error *validation.FieldError) *validationError
-	GetErrors() []validation.FieldError
-	HasError() bool
+type ValidationError struct {
+	entityName string
+	errors     []validate.FieldError
 }
 
-type validationError struct {
-	entity string
-	errors []validation.FieldError
-	mu     sync.Mutex
-}
-
-// Valida ro nome da entidade
-func NewValidationError(entityName string) IValidationError {
-	return &validationError{
-		entity: entityName,
-		errors: make([]validation.FieldError, 0),
+// TODO: Validar o nome da entidade
+func New(entityName string) *ValidationError {
+	return &ValidationError{
+		entityName: entityName,
+		errors:     make([]validate.FieldError, 0),
 	}
 }
 
-func (e *validationError) AddValidationError(error *validation.FieldError) *validationError {
-	if error == nil {
-		return e
+func (ve *ValidationError) Error() string {
+	var errs string
+
+	for _, err := range ve.errors {
+		errs += fmt.Sprintf("%s\n", err.CodeError)
 	}
 
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	e.errors = append(e.errors, *error)
-	return e
+	return errs
 }
 
-func (e *validationError) GetErrors() []validation.FieldError {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+// DUVIDA: devemos fazer o que caso o erro enviado seja do tipo nil?
+func (ve *ValidationError) AddValidationError(err error) *ValidationError {
+	if err == nil {
+		return ve
+	}
+	if fieldError, ok := err.(*validate.FieldError); ok {
+		ve.errors = append(ve.errors, *fieldError)
+	}
+	return ve
+}
 
-	var errorsCopy = make([]validation.FieldError, len(e.errors))
+func (e *ValidationError) Errors() []validate.FieldError {
+	var errorsCopy = make([]validate.FieldError, len(e.errors))
 	copy(errorsCopy, e.errors)
 	return errorsCopy
 }
 
-func (e *validationError) HasError() bool {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
+func (e *ValidationError) HasError() bool {
 	return len(e.errors) > 0
 }
 
@@ -109,4 +104,3 @@ func (e *validationError) HasError() bool {
 }
 
 */
-

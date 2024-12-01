@@ -3,23 +3,23 @@ package coupon
 import (
 	"time"
 
-	"stock-controll/internal/domain/entity/common"
-	"stock-controll/internal/domain/entity/discount"
-	validationError "stock-controll/internal/domain/entity/error"
 	"stock-controll/internal/domain/entity/product"
 	"stock-controll/internal/domain/entity/role"
-	"stock-controll/internal/domain/validation"
+	"stock-controll/internal/domain/services/discount"
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
 type ICoupon interface {
-	GetUUID() string
-	GetName() string
-	GetMinPurchaseAmount() float64
-	GetExpirationDate() time.Time
-	GetUsageLimit() CouponUseLimit
-	GetExclusivity() CouponExclusivity
+	UUID() string
+	Name() string
+	MinPurchaseAmount() float64
+	ExpirationDate() time.Time
+	UsageLimit() CouponUseLimit
+	Exclusivity() CouponExclusivity
 	IsUsable() bool
-	Redeem(purchasedProducts []product.IProduct) (discount.DiscountSummary, *validation.FieldError)
+	Redeem(purchasedProducts []product.IProduct) (discount.DiscountSummary, error)
 	IsProductValid(product product.IProduct) bool
 }
 
@@ -37,7 +37,7 @@ const (
 	Unlimited CouponUseLimit = -1
 )
 
-type coupon struct {
+type Coupon struct {
 	uuid              string
 	name              string
 	minPurchaseAmount float64
@@ -49,25 +49,27 @@ type coupon struct {
 	exclusivity       CouponExclusivity
 }
 
-func NewCoupon(
-	name string,
-	minPurchaseAmount float64,
-	discountScope discount.IProductSpecificDiscountStrategy,
-	startDate time.Time, // validar
-	expirationDate time.Time, // validar
-	usageLimit CouponUseLimit,
-	exclusivity CouponExclusivity,
-) (*coupon, validationError.IValidationError) {
+type Config struct {
+	Name              string
+	MinPurchaseAmount float64
+	DiscountScope     discount.IProductSpecificDiscountStrategy
+	StartDate         time.Time
+	ExpirationDate    time.Time
+	UsageLimit        int
+	Exclusivity       string
+}
 
-	CouponInstance := &coupon{
-		uuid:              common.GenerateUUID(),
-		name:              name,
-		minPurchaseAmount: minPurchaseAmount,
-		discountScope:     discountScope,
-		expirationDate:    expirationDate,
-		usageLimit:        usageLimit,
+func New(config Config) (*Coupon, error) {
+
+	CouponInstance := &Coupon{
+		uuid:              uuid.New(),
+		name:              config.Name,
+		minPurchaseAmount: config.MinPurchaseAmount,
+		discountScope:     config.DiscountScope,
+		expirationDate:    config.ExpirationDate,
+		usageLimit:        CouponUseLimit(config.UsageLimit), // TODO: validar
 		currentUsage:      0,
-		exclusivity:       exclusivity,
+		exclusivity:       CouponExclusivity(config.Exclusivity), // TODO: validar
 	}
 
 	err := CouponInstance.validate()
@@ -78,60 +80,63 @@ func NewCoupon(
 	return CouponInstance, nil
 }
 
-func (c *coupon) GetUUID() string {
+func (c *Coupon) UUID() string {
 	return c.uuid
 }
 
-func (c *coupon) GetName() string {
+func (c *Coupon) Name() string {
 	return c.name
 }
 
-func (c *coupon) GetMinPurchaseAmount() float64 {
+func (c *Coupon) MinPurchaseAmount() float64 {
 	return c.minPurchaseAmount
 }
 
-func (c *coupon) GetstartDate() time.Time {
+func (c *Coupon) StartDate() time.Time {
 	return c.startDate
 }
 
-func (c *coupon) GetExpirationDate() time.Time {
+func (c *Coupon) ExpirationDate() time.Time {
 	return c.expirationDate
 }
 
-func (c *coupon) GetUsageLimit() CouponUseLimit {
+func (c *Coupon) UsageLimit() CouponUseLimit {
 	return c.usageLimit
 }
 
-func (c *coupon) GetExclusivity() CouponExclusivity {
+func (c *Coupon) Exclusivity() CouponExclusivity {
 	return c.exclusivity
 }
 
-func (c *coupon) IsUsable() bool {
+func (c *Coupon) IsUsable() bool {
 	return c.usageLimit < 0 || c.currentUsage < int(c.usageLimit)
 }
 
-/*
-	A função Redeem pode ser melhorada para lidar com erros de forma mais clara.
-*/
-func (c *coupon) Redeem(userRole role.Role, item product.IProduct, quantity int) (discount.DiscountSummary, *validation.FieldError) {
+const (
+	ErrCouponUsageLimitExceeded  = "ERR_COUPON_USAGE_LIMIT_EXCEEDED"
+	ErrUserNotAllowedToUseCoupon = "ERR_USER_NOT_ALLOWED_TO_USE_COUPON"
+)
+
+func (c *Coupon) Redeem(userRole role.Role, item product.IProduct, quantity int) (discount.DiscountSummary, error) {
 	if !c.IsUsable() {
-		// excedeu o número de uso do cupom
-		return discount.DiscountSummary{}, &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return discount.DiscountSummary{}, &validate.FieldError{
+			FieldName: "coupon",
+			CodeError: ErrCouponUsageLimitExceeded,
 		}
 	}
 
 	if isUserAllowed(c.exclusivity, userRole) {
-		// Usuário não permitido a usar este cupom
-		return discount.DiscountSummary{}, &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return discount.DiscountSummary{}, &validate.FieldError{
+			FieldName: "user_uuid",
+			CodeError: ErrUserNotAllowedToUseCoupon,
 		}
 	}
 
-	if item.GetPrice()*float64(quantity) < c.minPurchaseAmount {
+	// TODO: implementar erro
+	if item.Price()*float64(quantity) < c.minPurchaseAmount {
 		// compra abaixo do mínimo para aplicabilidade do desconto
-		return discount.DiscountSummary{}, &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return discount.DiscountSummary{}, &validate.FieldError{
+			CodeError: "",
 		}
 	}
 
@@ -142,16 +147,12 @@ func (c *coupon) Redeem(userRole role.Role, item product.IProduct, quantity int)
 	return discountedAmount, err
 }
 
-func (c *coupon) IsProductValid(item product.IProduct) bool {
+func (c *Coupon) IsProductValid(item product.IProduct) bool {
 	return c.discountScope.IsProductValid(item)
 }
 
-
-// TODO: validar start date
-// Observe que, operação de validação de datas, já está sendo algo corriqueir, ou seja, está havendo repetição de código
-// Reoslver!!!
-func (c *coupon) validate() validationError.IValidationError {
-	couponError := validationError.NewValidationError("Coupon")
+func (c *Coupon) validate() error {
+	couponError := validationerrors.New("Coupon")
 	couponError.
 		AddValidationError(validateName(c.name)).
 		AddValidationError(validateMinPurchaseAllowed(c.minPurchaseAmount)).
@@ -170,60 +171,59 @@ const (
 	maxCouponNameLength = 20
 )
 
-func validateName(name string) *validation.FieldError {
-	return validation.Validate("name", name,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minCouponNameLength, maxCouponNameLength, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
+func validateName(name string) error {
+	return validate.New("name", name,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minCouponNameLength, maxCouponNameLength),
+		validate.CheckSpecialChars(validate.Disallow),
 	)
 }
 
 const minAmount = 0
 
-func validateMinPurchaseAllowed(minPurchaseAmount float64) *validation.FieldError {
+// TODO: implementar erro
+func validateMinPurchaseAllowed(minPurchaseAmount float64) error {
 	if minPurchaseAmount < minAmount {
-		return &validation.FieldError{
-			FieldName:  "discount",
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "discount",
+			CodeError: "",
 		}
 	}
 	return nil
 }
 
+const ErrCouponInvalidDateRange = "ERR_COUPON_INVALID_DATE_RANGE"
 
-/*
-	A repetição de lógica de validação de datas pode ser refatorada para evitar duplicação.
-*/
-func validateStartDate(startDate, expirationDate time.Time) *validation.FieldError {
-	return validation.Validate[time.Time](
+func validateStartDate(startDate, expirationDate time.Time) error {
+	return validate.New[time.Time](
 		"start_date", startDate,
-		validation.IsAfterThan(expirationDate, validation.ErrUnknown),
-	) 
-}
-
-const (
-    minCouponValidityPeriod = 7 * 24 * time.Hour  // 7 dias
-    maxCouponValidityPeriod = 365 * 24 * time.Hour // 1 ano
-)
-
-// Melhorar 
-/*
-	A data de expiração deve ser no mínimo 7 dias a partir da data de inicio de validade do cupom
-	Já a data de expiração deve ser de no máximo 1 ano 
-*/
-func validateExpirationDate(startDate, expirationDate time.Time)  *validation.FieldError {
-	return validation.Validate[time.Time](
-		"expiration_date", expirationDate,
-		validation.IsBeforeThan(startDate, validation.ErrUnknown),
-		validation.IsBeforeThan(time.Now().Add(minCouponValidityPeriod), validation.ErrUnknown),
-		validation.IsAfterThan(time.Now().Add(maxCouponValidityPeriod), validation.ErrUnknown),
+		validate.IsAfterThan(expirationDate, ErrCouponInvalidDateRange),
 	)
 }
 
-func validateDiscoutInstance(discountInstance discount.IProductSpecificDiscountStrategy) *validation.FieldError {
-	return validation.Validate[any](
+const (
+	minCouponValidityPeriod = 7 * 24 * time.Hour
+	maxCouponValidityPeriod = 365 * 24 * time.Hour
+)
+
+// TODO: Implementar erro
+/*
+	A data de expiração deve ser no mínimo 7 dias a partir da data de inicio de validade do cupom
+	Já a data de expiração deve ser de no máximo 1 ano
+*/
+func validateExpirationDate(startDate, expirationDate time.Time) error {
+	return validate.New[time.Time](
+		"expiration_date", expirationDate,
+		validate.IsBeforeThan(startDate, ""),
+		validate.IsBeforeThan(time.Now().Add(minCouponValidityPeriod), ""),
+		validate.IsAfterThan(time.Now().Add(maxCouponValidityPeriod), ""),
+	)
+}
+
+func validateDiscoutInstance(discountInstance discount.IProductSpecificDiscountStrategy) error {
+	return validate.New[any](
 		"discout", discountInstance,
-		validation.IsNil(discountInstance, validation.ErrUnknown),
+		validate.IsNil(discountInstance),
 	)
 }
 
@@ -246,7 +246,7 @@ func calculateTotalAmount(purchasedProducts []product.IProduct) float64 {
 	var total float64
 	for _, p := range purchasedProducts {
 		if p != nil {
-			total += p.GetPrice()
+			total += p.Price()
 		}
 	}
 	return total

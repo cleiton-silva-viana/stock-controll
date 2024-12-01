@@ -1,0 +1,155 @@
+# configurações dos linters
+linters-settings:
+  asasalint:
+      exclude:
+        - \.Debugf
+        - \.Infof
+        - \.Warnf
+        - \Errorf
+        - \.Fatalf
+      ignore-text: true
+  cyclop: 
+    max-complexity: 8
+    package-average: 0.5
+    skip-tests: false
+  decoder:
+    dec-order:
+      - type
+      - const
+      - var
+      - func
+    disable-dec-order-check: false
+    disable-init-func-first-check: false
+  dupl: 
+    threshold: 100
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    disable-default-exclusions: true
+    exclude-functions:
+      - io/ioutil.ReadFile
+      - io.Copy(*bytes.Buffer)
+      - io.Copy(os.Stdout)
+  exaustive:
+    check:
+      - switch
+      - map
+    check-generated: true
+    explicit-exhaustive-switch: true
+    explicit-exhaustive-map: true
+    default-case-required: true
+  funlen:
+    lines: 60
+    statement: 6
+    ignore-comments: true
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/org/project)
+      - blank 
+      - alias
+      - localmodule
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+    ignore-tests: false
+    numbers: true
+    min: 2
+    max: 2
+    ignore-calls: false
+  gocritic:
+    config: "/linters/gocritic.yml"
+  godox:
+    keywords:
+      - TODO
+      - BUG
+      - OPTIMIZE
+      - NOTE
+      - HACK
+  gosimple: 
+    checks: ["all"]
+  gosec:
+    config: "/linters/gosec.yml"
+  maintidx:
+    under: 30
+  misspell:
+    locals: US
+  mnd:
+    checks:
+      - argument
+      - case
+      - condition
+      - operation
+      - return
+      - assign
+  prealloc:
+    simple: false
+    range-loops: false
+    for-loops: true
+  unconvert:
+    fast-math: true
+    safe: true
+  usestdlibvars:
+    http-method: false
+    http-status-code: false
+    time-weekday: true
+    time-month: true
+    time-layout: true
+    crypto-hash: true
+    default-rpc-path: true
+    sql-isolation-level: true
+    tls-signature-scheme: true
+    constant-kind: true
+  unparam:
+    check-exported: true
+  whitespace:
+    multi-if: true
+    multi-func: true
+  revive: 
+    config: "/linters/revive.yml"
+
+
+# especificação de quais linters usar
+linters:
+  disable-all: true
+  enable:
+    - asasalint
+    - bodyclose # https://github.com/timakin/bodyclose
+    - cyclop # https://developer20.com/projects/cyclop/
+    # - decoder
+    - dupl # https://github.com/mibk/dupl
+    - errcheck # https://github.com/kisielk/errcheck
+    - exhaustive # https://pkg.go.dev/github.com/nishanths/exhaustive#hdr-Flags
+    - funlen
+    - gci
+    - goconst # https://github.com/jgautheron/goconst
+    - gocritic # https://go-critic.com/overview.html
+    - godox
+    - gosimple # https://staticcheck.dev/docs/configuration/options/#checks
+    - gosec # https://github.com/securego/gosec
+    - maintidx
+    - misspell
+    - mnd
+    - ineffassign
+    - misspell # corretor ortográfico - procurar análogo
+    - prealloc # 
+    - unconvert
+    - usestdlibvars # https://github.com/sashamelentyev/usestdlibvars
+    - unparam
+    - whitespace
+    - revive # https://revive.run/r
+
+run:
+  issues-exit-code: 1
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - gosec
+        - dupl
+
+# Referências
+#  https://rezakhademix.medium.com/what-is-a-golang-linter-and-how-to-use-it-1bffc0bd8062

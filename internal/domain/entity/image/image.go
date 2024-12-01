@@ -1,175 +1,203 @@
-package image
+package img
 
 /*
-
-Acessibilidade: Considere adicionar atributos de acessibilidade, como alt text, para as imagens. Isso é importante para usuários com deficiência visual e também ajuda no SEO.
-
+O que está abaixo deve ser considerado no use case???
 Validação de URLs: Verifique se os URLs das imagens estão corretos e acessíveis. URLs inválidos podem resultar em imagens quebradas na promoção.
-
 Versionamento: Considere implementar um sistema de versionamento para as imagens, especialmente se as promoções forem atualizadas com frequência. Isso ajuda a manter um histórico das alterações.
-
 Data de Upload: O formato da data deve ser consistente e preferencialmente em um padrão ISO (YYYY-MM-DD) para facilitar a comparação e a ordenação.
-
 */
 
 import (
-	"errors"
+	"bytes"
+	"image"
+	"io"
 	"mime/multipart"
-	validationerrors "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
-	"time"
+
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/validate"
 )
 
-// Sempre manter proporção 1:1
-/*
-Imagens de Produto no Carrinho:
-	Tamanho: 150x150 pixels a 300x300 pixels
-	Esse tamanho é geralmente suficiente para exibir uma visualização clara do produto
-	sem ocupar muito espaço na interface do carrinho.
-
-Imagens de Produto em Alta Resolução:
-	Se o seu carrinho de compras permite que os usuários vejam detalhes
-	do produto ao passar o mouse ou clicar,
-	você pode considerar usar imagens de 300x300 pixels a 500x500 pixels.
-	Isso permite uma visualização mais detalhada sem comprometer a performance.
-
-Otimização: Certifique-se de que as imagens estejam otimizadas para a web.
-Isso significa que elas devem ter um tamanho de arquivo reduzido para garantir
-tempos de carregamento rápidos, sem sacrificar a qualidade visual.
-
-Responsividade: Se o seu site for responsivo,
-considere como as imagens do carrinho se comportarão em diferentes tamanhos de tela.
-Você pode precisar ajustar o tamanho das imagens para dispositivos móveis.
-
-Aspecto Visual: Além do tamanho, preste atenção à proporção da imagem.
-Uma proporção de 1:1 (quadrada) é comum, mas você também pode usar proporções retangulares,
-dependendo do design do seu site. */
-
-/*
-Keywords
-Definição: Geralmente, "keywords" refere-se a palavras ou frases que são usadas para descrever o conteúdo de uma imagem de forma mais técnica ou orientada a SEO (Search Engine Optimization).
-Uso: Se o foco é otimizar a busca e a indexação da imagem em motores de busca ou sistemas de gerenciamento de conteúdo, "keywords" pode ser mais apropriado.
-Exemplo: Palavras-chave como "natureza", "paisagem", "verão" podem ser usadas para melhorar a visibilidade da imagem em pesquisas.
-*/
-
-type ImageExtension string
-
-const (
-	JPG  ImageExtension = "jpg"
-	JPEG ImageExtension = "jpeg"
-	PNG  ImageExtension = "png"
-	GIF  ImageExtension = "gif"
-)
-
-type ImageSize struct {
-	Width  int
-	Heigth int
+type Size struct {
+	width  uint
+	height uint
 }
 
-type ImageStatus string
+func (i *Size) Width() uint {
+	return i.width
+}
 
-const (
-	Active   ImageStatus = "active"
-	Pending  ImageStatus = "pending"
-	Archived ImageStatus = "archived"
-)
+func (i *Size) Heigth() uint {
+	return i.height
+}
 
 type Image struct {
-	imageUUID  string
-	url        string         // caminho de onde a imagem é armazenad ano servidor
-	size       ImageSize      // largura e altura da imagem em pixels
-	extension  ImageExtension // tipo de extensão do arquivo, ex: JPEG, PNG, GIF
-	status     ImageStatus    // ativa ou pendente
-	UploadedAt time.Time
+	extension string
+	Size
+	image.Image
 }
 
-type BaseImage struct {
-	name        string   // nome original da imagem
-	title       string   // título para a imagem
-	description string   // descrição da imagem
-	keyWords    []string // palavras chaves - definir estratégias
+func (i *Image) Extension() string {
+	return i.extension
 }
 
-/*
-Processo de cadastro de uma imagem no sistema:
-
-	Recebemos uma imagem enviada pelo front-end
-	Checamos se o tamanho da imagem não excede um limite razoável (e.g: 2mb)
-	Checamos a extensão no qual a imagem está
-	Checamos as dimensões da imagem (se está 1:1 caso seja imagem de produto)
-	Checamos o título da imagem
-	Checamos o nome da imagem
-	Checamos a descrição da imagem
-	Checamos as key workds
-
-	Realizamos a operação de otimização das imagens
-	Geramos cópias para os tamanhos e formatos necessários
-	Criamos as urls
-	referenciamos as url
-
-	instânciamos a imagem
-	salvamos no banco de dados
-*/
-func NewImage(image multipart.File,title, name, description string, heigth, width int) (*Image, validationerrors.IValidationError) {}
-
-
-// Verificar se o arquivo foi enviado.
-// Verificar se o arquivo é realmente uma imagem.
-// Verificar o tamanho do arquivo (opcional).
-// Decodificar a imagem para garantir que ela é válida.
-
-func (i *Image) validate() *validationerrors.IValidationError {
-
+type IValidator interface {
+	Dimension(width, height uint) error
+	Resolution(width, height uint) error
 }
+
+type Config struct {
+	Image       multipart.File
+	Title       string
+	Description string
+}
+
+const ErrFileReadFailed = "ERR_FILE_READ_FAILED"
+
+func new(file multipart.File, validator IValidator) (*Image, error) {
+	imageErrors := validationerrors.New("image").
+		AddValidationError(isNil(file))
+	if imageErrors.HasError() {
+		return nil, imageErrors
+	}
+
+	defer file.Close()
+
+	buff, err := io.ReadAll(file)
+	if err != nil {
+		return nil, &validate.FieldError{
+			FieldName: "image",
+			CodeError: ErrFileReadFailed,
+		}
+	}
+
+	img, format, err := image.Decode(bytes.NewReader(buff))
+	if err != nil {
+		return nil, err
+	}
+
+	imageErrors.AddValidationError(validateImageType(format))
+	if imageErrors.HasError() {
+		return nil, imageErrors
+	}
+
+	width := uint(img.Bounds().Dx())
+	height := uint(img.Bounds().Dy())
+
+	imageErrors.
+		AddValidationError(validator.Dimension(width, height)).
+		AddValidationError(validator.Resolution(width, height))
+	if imageErrors.HasError() {
+		return nil, imageErrors
+	}
+
+	return &Image{
+		extension: format,
+		Size: Size{
+			width:  width,
+			height: height,
+		},
+		Image: img,
+	}, nil
+}
+
+const ErrImageRequired = "ERR_IMAGE_REQUIRED"
+
+func isNil(file any) error {
+	if file == nil {
+		return &validate.FieldError{
+			FieldName: "image",
+			CodeError: ErrImageRequired,
+		}
+	}
+	return nil
+}
+
+var ValidImageTypes = map[string]struct{}{
+	"png":  {},
+	"jpg":  {},
+	"jpeg": {},
+	"webp": {},
+}
+
+const ErrInvalidFileExtension = "ERR_INVALID_FILE_EXTENSION"
+
+func validateImageType(fileType string) error {
+	_, ok := ValidImageTypes[fileType]
+	if !ok {
+		return &validate.FieldError{
+			FieldName: "image",
+			CodeError: ErrInvalidFileExtension,
+		}
+	}
+	return nil
+}
+
+type ResizeMode int
 
 const (
-	minNameLength = 3
-	maxNameLength = 30
+	KeepAspectRatioByWidth ResizeMode = iota
+	KeepAspectRatioByHeight
+	KeepExactDimensions
 )
 
-func validateName(name string) *validation.FieldError {
-	return validation.Validate(
-		"name", name,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minNameLength, maxNameLength, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
-	)
+type ResizeConfig struct {
+	Name    string
+	Mode    ResizeMode
+	NewSize Size
+	ConverterConfig
 }
 
-const (
-	minTitleLength = 3
-	maxTitleLength = 30
-)
-
-func validateTitle(title string) *validation.FieldError {
-	return validation.Validate(
-		"title", title,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minTitleLength, maxTitleLength, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
-	)
+type IResizer interface {
+	Resize(img image.Image, size Size) (image.Image, error)
 }
 
-const (
-	minDescirptionLength = 12
-	maxDescriptionLength = 60
-)
+func resize(img Image, resizer IResizer, converter IConverter, configs []ResizeConfig) (map[string]image.Image, error) {
+	var resizedImages = make(map[string]image.Image, len(configs))
 
-func validateDescription(description string) *validation.FieldError {
-	return validation.Validate(
-		"description", description,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minDescirptionLength, maxDescriptionLength, validation.ErrUnknown),
-	)
+	for _, config := range configs {
+		newSize := calculateDimensions(img, config.Mode, config.NewSize)
+		resizedImage, err := resizer.Resize(img, newSize)
+		if err != nil {
+			return nil, err
+		}
+
+		convertedImage, err := converter.Convert(resizedImage, config.ConverterConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		resizedImages[config.Name] = convertedImage
+	}
+
+	return resizedImages, nil
 }
 
-func validateSize(length, heigth int) {
+type DimensionCalculator func(aspectRatio, width, heigth uint) Size
+
+var dimensionCalculator = map[ResizeMode]DimensionCalculator{
+	KeepAspectRatioByWidth: func(aspectRatio, width, height uint) Size {
+		return Size{width: width, height: width / aspectRatio}
+	},
+	KeepAspectRatioByHeight: func(aspectRatio, width, height uint) Size {
+		return Size{width: height, height: height * aspectRatio}
+	},
+	KeepExactDimensions: func(aspectRatio, width, height uint) Size {
+		return Size{width: width, height: height}
+	},
 }
 
-func OptimizeImage(image string) string {
-	return ""
+func calculateDimensions(img Image, mode ResizeMode, size Size) Size {
+	aspectRatio := uint(img.width / img.height)
+	return dimensionCalculator[mode](aspectRatio, size.width, size.height)
 }
 
-func isValidExtension(image string, expectedExtensions []ImageExtension) bool {
-	return false
+type IConverter interface {
+	Convert(img image.Image, config ConverterConfig) (image.Image, error)
+}
+
+type ConverterConfig struct {
+	TargetFormat    string
+	Compress        bool
+	Lossless        bool
+	CompressQuality uint
 }

@@ -1,4 +1,4 @@
-package image
+package img
 
 // abaixo o formato almejado
 /* {
@@ -62,8 +62,5 @@ package image
 //					banner,
 //					anúncio
 //					card
-type PromotionImage struct {
-	BaseImage
-	resolutions map[string]Image // 500x500, 750x750x 1250x750, etc...
-}
+
 

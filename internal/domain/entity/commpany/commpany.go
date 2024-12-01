@@ -1,6 +1,4 @@
-package entity
-
-// TODO: implementar o método para status
+package commpany
 
 import (
 	"fmt"
@@ -8,43 +6,75 @@ import (
 
 	"stock-controll/internal/domain/entity/address"
 	"stock-controll/internal/domain/entity/contact"
-	"stock-controll/internal/domain/validation"
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/validate"
 )
 
 type ICompany interface {
-	GetUUID() string
-	GetName() string
-	GetCNPJ() string
-	GetBillingContact() string
-	GetBillingEmail() string
-	GetBillingPhone() string
-	GetPurchaseContact() string
-	GetPurchaseEmail() string
-	GetPurchasePhone() string
+	UUID() string
+	Name() string
+	CNPJ() string
+	BillingContact() string
+	BillingEmail() string
+	BillingPhone() string
+	PurchaseContact() string
+	PurchaseEmail() string
+	PurchasePhone() string
 }
 
-type companyStatus string
+type CompanyStatus string
 
 const (
-	active   = "active"
-	inactive = "inactive"
+	Active   = "active"
+	Inactive = "inactive"
 )
 
-type company struct {
+type Config struct {
+	UUID            string
+	Name            string
+	CNPJ            string
+	Status          string
+	BillingContact  contact.IContact
+	PurchaseContact contact.IContact
+	Address         address.IAddress
+}
+type Company struct {
 	uuid            string
 	name            string
 	cnpj            string
 	billingContact  contact.IContact
 	purchaseContact contact.IContact
 	address         address.IAddress
-	status          companyStatus
+	status          CompanyStatus
 }
 
-func (c *company) GetUUID() string {
+func New(config Config) (*Company, error) {
+	var instance Company
+
+	errs := validationerrors.New("company").
+		AddValidationError(instance.SetName(config.Name)).
+		AddValidationError(instance.SetCNPJ(config.CNPJ)).
+		AddValidationError(instance.SetStatus(config.Status)).
+		AddValidationError(instance.SetBillingContact(
+			config.BillingContact.Email(),
+			config.BillingContact.Phone())).
+		AddValidationError(instance.SetPurchaseContact(
+			config.PurchaseContact.Email(),
+			config.PurchaseContact.Phone(),
+		)).
+		AddValidationError(instance.SetAddress(config.Address))
+
+	if errs.HasError() {
+		return nil, errs
+	}
+	return &instance, nil
+}
+
+func (c *Company) UUID() string {
 	return c.uuid
 }
 
-func (c *company) GetName() string {
+func (c *Company) Name() string {
 	return c.name
 }
 
@@ -53,10 +83,10 @@ const (
 	companyNameMaxLength = 100
 )
 
-func (c *company) SetName(name string) *validation.FieldError {
-	err := validation.Validate("name", name,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(companyNameMinLength, companyNameMaxLength, validation.ErrUnknown),
+func (c *Company) SetName(name string) error {
+	err := validate.New("name", name,
+		validate.IsBlank(),
+		validate.IsLengthInRange(companyNameMinLength, companyNameMaxLength),
 	)
 	if err == nil {
 		c.name = name
@@ -64,20 +94,20 @@ func (c *company) SetName(name string) *validation.FieldError {
 	return err
 }
 
-func (c *company) GetCNPJ() string {
+func (c *Company) CNPJ() string {
 	return c.cnpj
 }
 
 const CNPJLength = 18
+const ErrCNPJWithInvalidFormat = "ERR_CNPJ_WITH_INVALID_FORMAT"
 
-// Deve ser imutável
-func (c *company) SetCNPJ(cnpj string) *validation.FieldError {
+func (c *Company) SetCNPJ(cnpj string) error {
 	re := `^(\d{2})(?:\.(\d{3}))(?:\.(\d{3}))(?:\/(\d{4}))(?:\-(\d{2})$)`
 
-	err := validation.Validate("cnpj", cnpj,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthEqualTo(CNPJLength, validation.ErrUnknown),
-		validation.IsFormatValid(regexp.MustCompile(re), validation.ErrUnknown),
+	err := validate.New("cnpj", cnpj,
+		validate.IsBlank(),
+		validate.IsLengthEqualTo(CNPJLength),
+		validate.IsFormatValid(regexp.MustCompile(re), ErrCNPJWithInvalidFormat),
 	)
 	if err == nil {
 		c.cnpj = cnpj
@@ -85,77 +115,97 @@ func (c *company) SetCNPJ(cnpj string) *validation.FieldError {
 	return err
 }
 
-// TODO: Melhorar - verificar um formato mais interessante
-func (c *company) GetBillingContact() string {
-	if c.billingContact == nil {
-		return "contact not available"
+const ErrInvalidCompanyStatus = "ERR_INVALID_COMPANY_STATUS"
+
+func (c *Company) SetStatus(newStatus string) error {
+	statusParsed := CompanyStatus(newStatus)
+	
+	if statusParsed == Active || statusParsed == Inactive {
+		c.status = statusParsed
+		return nil
 	}
-	return fmt.Sprintf("Email: %s\nPhone: %s", c.billingContact, c.billingContact.GetPhone())
+
+	return &validate.FieldError{
+		FieldName: "status",
+		CodeError: ErrInvalidCompanyStatus,
+	}
 }
 
-func (c *company) SetBillingContact(email, phone string) *validation.FieldError {
-	contact, err := contact.NewContact(email, phone)
+func (c *Company) BillingContact() string {
+	err := validate.New[any]("billing_contact", c.billingContact,
+		validate.IsNil(c.billingContact),
+	)
+	if err.HasError() {
+		return "no has billing contact"
+	}
+	return fmt.Sprintf("Email: %s\nPhone: %s", c.billingContact, c.billingContact.Phone())
+}
+
+func (c *Company) SetBillingContact(email, phone string) error {
+	contact, err := contact.New(email, phone)
 	if err == nil {
 		c.billingContact = contact
 	}
-	return nil
-	// return err
+	return err
 }
 
-func (c *company) GetBillingEmail() string {
-	return c.billingContact.GetEmail()
+func (c *Company) BillingEmail() string {
+	return c.billingContact.Email()
 }
 
-func (c *company) SetBillingEmail(email string) *validation.FieldError {
+func (c *Company) SetBillingEmail(email string) error {
 	return c.billingContact.SetEmail(email)
 }
 
-func (c *company) GetBillingPhone() string {
-	return c.billingContact.GetPhone()
+func (c *Company) BillingPhone() string {
+	return c.billingContact.Phone()
 }
 
-func (c *company) SetBillingPhone(phone string) *validation.FieldError {
+func (c *Company) SetBillingPhone(phone string) error {
 	return c.billingContact.SetPhone(phone)
 }
 
-func (c *company) GetPurchaseContact() string {
+func (c *Company) PurchaseContact() string {
 	if c.billingContact == nil {
-		return "contact not available"
+		return "purchase contact not available"
 	}
-	return fmt.Sprintf("Email: %s\nPhone: %s", c.purchaseContact.GetEmail(), c.purchaseContact.GetPhone())
+	return fmt.Sprintf("Email: %s\nPhone: %s", c.purchaseContact.Email(), c.purchaseContact.Phone())
 }
 
-func (c *company) SetPurchaseContact(email, phone string) *validation.FieldError {
-	contact, err := contact.NewContact(email, phone)
+func (c *Company) SetPurchaseContact(email, phone string) error {
+	contact, err := contact.New(email, phone)
 	if err == nil {
 		c.purchaseContact = contact
 	}
-	// return err
-	return nil
+	return err
 }
 
-func (c *company) GetPurchaseEmail() string {
-	return c.purchaseContact.GetEmail()
+func (c *Company) PurchaseEmail() string {
+	return c.purchaseContact.Email()
 }
 
-func (c *company) SetPurchaseEmail(email string) *validation.FieldError {
+func (c *Company) SetPurchaseEmail(email string) error {
 	return c.purchaseContact.SetEmail(email)
 }
 
-func (c *company) GetPurchasePhone() string {
-	return c.purchaseContact.GetPhone()
+func (c *Company) PurchasePhone() string {
+	return c.purchaseContact.Phone()
 }
 
-func (c *company) SetPurchasePhone(phone string) *validation.FieldError {
+func (c *Company) SetPurchasePhone(phone string) error {
 	return c.purchaseContact.SetPhone(phone)
 }
 
-func (c *company) GetAddress() address.IAddress {
+func (c *Company) Address() address.IAddress {
 	return c.address
 }
 
-// Adicionar validações
-func (c *company) SetAddress(newAddress address.IAddress) *validation.FieldError {
-	c.address = newAddress
-	return nil
+func (c *Company) SetAddress(newAddress address.IAddress) error {
+	err := validate.New[any]("address", newAddress,
+		validate.IsNil(newAddress),
+	)
+	if err == nil {
+		c.address = newAddress
+	}
+	return err
 }

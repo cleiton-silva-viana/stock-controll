@@ -4,221 +4,375 @@ import (
 	"strings"
 	"testing"
 
+	"stock-controll/internal/domain/entity/tag"
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+
+	"stock-controll/test/unitary"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type test struct {
-	testDescription string
-	productDTO
+var data = Config{
+	Name:             "metal ice",
+	Description:      "a metal with ice for your pratice",
+	Barcode:          "12346631234988",
+	BrandUUID:        uuid.New(),
+	ManufacturerUUID: uuid.New(),
+	CategoryUUID:     uuid.New(),
 }
 
-type productDTO struct {
-	name             string
-	description      string
-	barcode          string
-	brandUUID        string
-	categoryUUID     string
-	manufacturerUUID string
-}
-
-func Test_NewProcut_Sucess(t *testing.T) {
+func TestNewNoError(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	testsCases := []test{
+	testsCases := []unitary.TestField[Config]{
 		{
-			testDescription: "Product with minimum name length",
-			productDTO: productDTO{
-				name:             strings.Repeat("a", productNameMinLength),
-				description:      "Descrição do produto",
-				barcode:          "1234567890123",
-				brandUUID:        "01928cee-b413-72f3-ad15-a3a297f0a114",
-				manufacturerUUID: "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "Product with minimum name length",
+			Handler:     func(c *Config) { c.Name = strings.Repeat("a", minNameLength) },
 		},
 		{
-			testDescription: "Product with maximum name length",
-			productDTO: productDTO{
-				name:             strings.Repeat("b", productNameMaxLength),
-				description:      "Descrição do produto",
-				barcode:          "1234567890123",
-				brandUUID:        "01928cee-b413-72f3-ad15-a3a297f0a114",
-				manufacturerUUID: "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "Product with maximum name length",
+			Handler:     func(c *Config) { c.Name = strings.Repeat("b", maxNameLength) },
 		},
 		{
-			testDescription: "Product with min description length",
-			productDTO: productDTO{
-				name:             "Product Test",
-				description:      strings.Repeat("s", productDescriptionMinLength),
-				barcode:          "1234567890123",
-				brandUUID:        "01928cee-b413-72f3-ad15-a3a297f0a114",
-				manufacturerUUID: "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "Product with min description length",
+			Handler:     func(c *Config) { c.Description = strings.Repeat("s", minDescriptionLength) },
 		},
 		{
-			testDescription: "Product with maximum description length",
-			productDTO: productDTO{
-				name:             "Product test",
-				description:      strings.Repeat("z", productDescriptionMaxLength),
-				barcode:          "1234567890123",
-				brandUUID:        "01928cee-b413-72f3-ad15-a3a297f0a114",
-				manufacturerUUID: "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "Product with maximum description length",
+			Handler:     func(c *Config) { c.Description = strings.Repeat("z", maxDescriptionLength) },
 		},
 	}
 
-	for _, tt := range testsCases {
-		t.Run(tt.testDescription, func(t *testing.T) {
+	for _, test := range testsCases {
+		t.Run(test.Description, func(t *testing.T) {
+			dataCopy := data
+			test.Handler(&dataCopy)
 
 			// Act
-			product, err := NewProductBuilder().
-				SetName(tt.name).
-				SetDescription(tt.description).
-				SetBarcode(tt.barcode).
-				SetBrandUUID(tt.brandUUID).
-				SetCategoryUUID(tt.categoryUUID).
-				SetManufacturerUUID(tt.manufacturerUUID).
-				Build()
+			result, err := New(dataCopy)
 
 			// Assert
 			assert.Nil(t, err)
-			require.NotNil(t, product)
-			assert.Equal(t, strings.ToLower(tt.name), strings.ToLower(product.GetName()))
-			assert.Equal(t, strings.ToLower(tt.description), strings.ToLower(product.GetDescription()))
-			assert.Equal(t, tt.brandUUID, product.GetBrandUUID())
-			assert.Equal(t, tt.categoryUUID, product.GetCategoryUUID())
-			assert.Equal(t, tt.manufacturerUUID, product.GetManufacturerUUID())
+			require.NotNil(t, result)
+			assert.Equal(t, strings.ToLower(dataCopy.Name), strings.ToLower(result.Name()))
+			assert.Equal(t, strings.ToLower(dataCopy.Description), strings.ToLower(result.Description()))
+			assert.Equal(t, dataCopy.BrandUUID, result.BrandUUID())
+			assert.Equal(t, dataCopy.CategoryUUID, result.CategoryUUID())
+			assert.Equal(t, dataCopy.ManufacturerUUID, result.ManufacturerUUID())
 		})
 	}
 }
 
-func Test_NewProduct_Error(t *testing.T) {
+func TestNewWithError(t *testing.T) {
 	t.Parallel()
 
-	testsCases := []test{
+	// Arrange
+	testCases := []unitary.TestField[Config]{
 		{
-			testDescription: "empty product name",
-			productDTO: productDTO{
-				name:             "            ",
-				description:      strings.Repeat("abc", 10),
-				barcode:          "1946753214860",
-				brandUUID:        "01928cee-b413-72f3-ad15-a3a297f0a114",
-				manufacturerUUID: "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "empty product name",
+			Handler:     func(c *Config) { c.Name = "         " },
 		},
 		{
-			testDescription: "product name is short than minimum allowed",
-			productDTO: productDTO{
-				name:             strings.Repeat("a", productNameMinLength-1),
-				description:      "Savor the sweetness of our Juicy Navel Oranges, handpicked for peak freshness",
-				barcode:          "6548964631668",
-				brandUUID:        "01928cee-b413-72f3-ad15-a3a297f0a114",
-				manufacturerUUID: "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "product name is short than minimum allowed",
+			Handler:     func(c *Config) { c.Name = strings.Repeat("a", minNameLength-1) },
 		},
 		{
-			testDescription: "product name is greater than maximum allowed",
-			productDTO: productDTO{
-				name:             strings.Repeat("a", productNameMaxLength+1),
-				description:      "Savor the sweetness of our Juicy Navel Oranges, handpicked for peak freshness",
-				barcode:          "8949461894984",
-				brandUUID:        "01928cee-b413-72f3-ad15-a3a297f0a114",
-				manufacturerUUID: "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "product name is greater than maximum allowed",
+			Handler:     func(c *Config) { c.Name = strings.Repeat("a", maxNameLength+1) },
 		},
 		{
-			testDescription: "product description is short than minimum allowed",
-			productDTO: productDTO{
-				name:             "banana",
-				description:      strings.Repeat("d", productDescriptionMinLength - 1),
-				barcode:          "1234567890123",
-				brandUUID:        "01928cee-b413-72f3-ad15-a3a297f0a114",
-				manufacturerUUID: "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "product description is short than minimum allowed",
+			Handler:     func(c *Config) { c.Description = strings.Repeat("d", minDescriptionLength-1) },
 		},
 		{
-			testDescription: "product description is greater than maximum allowed",
-			productDTO: productDTO{
-				name:             "banana",
-				description:      strings.Repeat("A", productDescriptionMaxLength + 1),
-				barcode:          "1234567890123",
-				brandUUID:        "01928cee-b413-72f3-ad15-a3a297f0a114",
-				manufacturerUUID: "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "product description is greater than maximum allowed",
+			Handler:     func(c *Config) { c.Description = strings.Repeat("A", maxDescriptionLength+1) },
 		},
 		{
-			testDescription: "barcode contain letter",
-			productDTO: productDTO{
-				name:             "orange",
-				description:      "Savor the sweetness of our Juicy Navel Oranges, handpicked for peak freshness. These easy-to-peel oranges are rich in vitamin C and perfect for snacking or juicing. Enjoy their vibrant flavor and refreshing juiciness in salads or on their own. A delicious, healthy treat for everyone!",
-				barcode:          "1234565789a",
-				brandUUID:        "01928cee-b413-72f3-ad15-a3a297f0a114",
-				manufacturerUUID: "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "barcode is empty",
+			Handler:     func(c *Config) { c.Barcode = "         " },
 		},
 		{
-			testDescription: "brand uuid contain invalid format",
-			productDTO: productDTO{
-				name:             "orange",
-				description:      "Savor the sweetness of our Juicy Navel Oranges, handpicked for peak freshness. These easy-to-peel oranges are rich in vitamin C and perfect for snacking or juicing. Enjoy their vibrant flavor and refreshing juiciness in salads or on their own. A delicious, healthy treat for everyone!",
-				barcode:          "1234567890123",
-				brandUUID:        "0192589b-33df-7408/b68e-e95b7b1cf94e",
-				manufacturerUUID: "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "barcode contain letter",
+			Handler:     func(c *Config) { c.Barcode = "1234565789a" },
 		},
 		{
-			testDescription: "manufacturer UUID contain invalid format",
-			productDTO: productDTO{
-				name:             "orange",
-				description:      "Savor the sweetness of our Juicy Navel Oranges, handpicked for peak freshness. These easy-to-peel oranges are rich in vitamin C and perfect for snacking or juicing. Enjoy their vibrant flavor and refreshing juiciness in salads or on their own. A delicious, healthy treat for everyone!",
-				barcode:          "1234567890123",
-				brandUUID:        "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				manufacturerUUID: "092589b-a7c7-79d3-842d-9318f5f45961",
-				categoryUUID:     "01928d22-18d1-701a-bad2-8a49848d97f4",
-			},
+			Description: "barcode contain special chars",
+			Handler:     func(c *Config) { c.Barcode = "#$#@54556546R%$#" },
 		},
 		{
-			testDescription: "category UUID contain invalid format",
-			productDTO: productDTO{
-				name:             "orange",
-				description:      "Savor the sweetness of our Juicy Navel Oranges, handpicked for peak freshness. These easy-to-peel oranges are rich in vitamin C and perfect for snacking or juicing. Enjoy their vibrant flavor and refreshing juiciness in salads or on their own. A delicious, healthy treat for everyone!",
-				barcode:          "1234567890123",
-				brandUUID:        "01928d22-004d-7d8e-92ac-9f4be5c3cddf",
-				manufacturerUUID: "01928cee-b413-72f3-ad15-a3a297f0a114",
-				categoryUUID:     "0192589c-174b-77ce-8395",
-			},
+			Description: "invalid brand uuid",
+			Handler:     func(c *Config) { c.BrandUUID = "0192589b-33df-7408/b68e-e95b7b1cf94e" },
+		},
+		{
+			Description: "invalid manufacturer uuid",
+			Handler:     func(c *Config) { c.ManufacturerUUID = "092589b-a7c7-79d3-842d-9318f5f45961" },
+		},
+		{
+			Description: "invlaid category uuid",
+			Handler:     func(c *Config) { c.CategoryUUID = "0192589c-174b-77ce-8395" },
 		},
 	}
 
-	for _, tt := range testsCases {
-		t.Run(tt.testDescription, func(t *testing.T) {
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			dataCopy := data
+			test.Handler(&dataCopy)
 
 			// Act
-			product, err := NewProductBuilder().
-				SetName(tt.productDTO.name).
-				SetDescription(tt.productDTO.description).
-				SetBarcode(tt.productDTO.barcode).
-				SetBrandUUID(tt.productDTO.brandUUID).
-				SetCategoryUUID(tt.productDTO.categoryUUID).
-				SetManufacturerUUID(tt.productDTO.manufacturerUUID).
-				Build()
+			result, err := New(dataCopy)
 
 			// Assert
-			assert.Nil(t, product)
-			assert.NotNil(t, err)
+			assert.Nil(t, result)
+			require.Error(t, err)
+			assert.ErrorAs(t, err, &validationerrors.ValidationError{})
+		})
+	}
+}
+
+var productInstance = Product{
+	uuid:             uuid.New(),
+	name:             "cookier ice",
+	description:      "a metal with ice for your pratice",
+	barcode:          "12346631234988",
+	brandUUID:        uuid.New(),
+	manufacturerUUID: uuid.New(),
+	categoryUUID:     uuid.New(),
+	cost:             2.99,
+	price:            10,
+	quantity:         39,
+	tags:             nil,
+	Image:            nil,
+}
+
+func TestSetCostNoError(t *testing.T) {
+	// Arrange
+	testCases := []unitary.TestField[Product]{
+		{
+			Description: "cost equal than minimum allowed",
+			Handler:     func(p *Product) { p.cost = minCost },
+		},
+		{
+			Description: "const equal than maximum allowed",
+			Handler:     func(p *Product) { p.cost = maxCost },
+		},
+		{
+			Description: "cost is mid range value allowed",
+			Handler:     func(p *Product) { p.cost = 100.00 },
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			dataCopy := productInstance
+			test.Handler(&dataCopy)
+
+			// Act
+			err := productInstance.SetCost(dataCopy.cost)
+
+			// Assert
+			assert.NoError(t, err)
+			assert.Equal(t, productInstance.Cost(), dataCopy.cost)
+		})
+	}
+}
+
+func TestSetCostWithError(t *testing.T) {
+	// Arrange
+	testCases := []unitary.TestField[Product]{
+		{
+			Description: "zero cost",
+			Handler:     func(p *Product) { p.cost = 0 }, // TODO: Criar um erro específico para este cenário
+		},
+		{
+			Description: "cost is negative",
+			Handler:     func(p *Product) { p.cost = -10.00 }, // TODO: Criar erro específico para este cenário
+		},
+		{
+			Description: "cost is less than min allowed",
+			Handler:     func(p *Product) { p.cost = minCost - 0.1 },
+		},
+		{
+			Description: "cost is greater than max allowed",
+			Handler:     func(p *Product) { p.cost = maxCost + 0.1 },
+		},
+		{
+			Description: "cost with many decimal places", // TODO: criar erro específico para este cenário
+			Handler:     func(p *Product) { p.cost = 500.123 },
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			dataCopy := productInstance
+			test.Handler(&dataCopy)
+
+			// Act
+			err := productInstance.SetCost(dataCopy.cost)
+
+			// Assert
+			assert.Error(t, err)
+			assert.NotEqual(t, dataCopy.cost, productInstance.Cost())
+		})
+	}
+}
+
+func TestSetPriceNoError(t *testing.T) {
+	// Arrange
+	testCases := []unitary.TestField[Product]{
+		{
+			Description: "price equal than min allowed",
+			Handler:     func(p *Product) { p.price = minCost },
+		},
+		{
+			Description: "price equal than max allowed",
+			Handler:     func(p *Product) { p.price = maxCost },
+		},
+		{
+			Description: "price is mid range value allowed",
+			Handler:     func(p *Product) { p.price = 250.99 },
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			dataCopy := productInstance
+			test.Handler(&dataCopy)
+
+			// Act
+			err := productInstance.SetPrice(dataCopy.price)
+
+			// Assert
+			assert.NoError(t, err)
+			assert.Equal(t, productInstance.Price(), dataCopy.price)
+		})
+	}
+}
+
+func TestSetPriceWithError(t *testing.T) {
+	// Arrange
+	testCases := []unitary.TestField[Product]{
+		{
+			Description: "zero price",
+			Handler:     func(p *Product) { p.price = 0 }, // TODO: Criar um erro específico para este cenário
+		},
+		{
+			Description: "price is negative",
+			Handler:     func(p *Product) { p.price = -10.00 }, // TODO: Criar erro específico para este cenário
+		},
+		{
+			Description: "price is less than min allowed",
+			Handler:     func(p *Product) { p.price = minCost - 0.1 },
+		},
+		{
+			Description: "price is greater than max allowed",
+			Handler:     func(p *Product) { p.price = maxCost + 0.1 },
+		},
+		{
+			Description: "price with many decimal places", // TODO: criar erro específico para este cenário
+			Handler:     func(p *Product) { p.price = 500.123 },
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			dataCopy := productInstance
+			test.Handler(&dataCopy)
+
+			// Act
+			err := productInstance.SetPrice(dataCopy.price)
+
+			// Assert
+			assert.Error(t, err)
+			assert.NotEqual(t, dataCopy.price, productInstance.Price())
+		})
+	}
+}
+
+func TestStateConsistencyAfterInvalidSet(t *testing.T) {
+	dataCopy := productInstance
+	// Arrange
+	testCases := []unitary.Consistence{
+		{
+			T:            t,
+			Description:  "test consistence of cost value",
+			Getter:       func() interface{} { return dataCopy.Cost() },
+			Setter:       func(value interface{}) error { return dataCopy.SetCost(value.(float64)) },
+			InvalidValue: -0.01,
+		},
+		{
+			T:            t,
+			Description:  "test consistence of price value",
+			Getter:       func() interface{} { return dataCopy.Price },
+			Setter:       func(value interface{}) error { return dataCopy.SetPrice(value.(float64)) },
+			InvalidValue: 1000000,
+		},
+		{
+			T:            t,
+			Description:  "test consistence of product name",
+			Getter:       func() interface{} { return dataCopy.Name },
+			Setter:       func(value interface{}) error { return dataCopy.SetName(value.(string)) },
+			InvalidValue: "Post Malon3$#@",
+		},
+		{
+			T:            t,
+			Description:  "test consistence of product description",
+			Getter:       func() interface{} { return dataCopy.Name },
+			Setter:       func(value interface{}) error { return dataCopy.SetDescription(value.(string)) },
+			InvalidValue: strings.Repeat("a", maxDescriptionLength+1),
+		},
+		{
+			T:            t,
+			Description:  "test consistence of product tag",
+			Getter:       func() interface{} { return dataCopy.Name },
+			Setter:       func(value interface{}) error { return dataCopy.SetTag(value.(tag.Tag)) },
+			InvalidValue: nil,
+		},
+		{
+			T:            t,
+			Description:  "test consistence quantity update",
+			Getter:       func() interface{} { return dataCopy.Name },
+			Setter:       func(value interface{}) error { return dataCopy.SetQuantity(value.(int)) },
+			InvalidValue: -1,
+		},
+		{
+			T:            t,
+			Description:  "test consistence of barcode value",
+			Getter:       func() interface{} { return dataCopy.Barcode },
+			Setter:       func(value interface{}) error { return dataCopy.SetBarcode(value.(string)) },
+			InvalidValue: "",
+		},
+		{
+			T:            t,
+			Description:  "test consistence of  product brand UUID",
+			Getter:       func() interface{} { return dataCopy.BrandUUID },
+			Setter:       func(value interface{}) error { return dataCopy.SetBrandUUID(value.(string)) },
+			InvalidValue: "",
+		},
+		{
+			T:            t,
+			Description:  "test consistence of manufacturer UUID",
+			Getter:       func() interface{} { return dataCopy.ManufacturerUUID },
+			Setter:       func(value interface{}) error { return dataCopy.SetManufacturerUUID(value.(string)) },
+			InvalidValue: "",
+		},
+		{
+			T:            t,
+			Description:  "test consistence of category UUID",
+			Getter:       func() interface{} { return dataCopy.CategoryUUID },
+			Setter:       func(value interface{}) error { return dataCopy.SetCategoryUUID(value.(string)) },
+			InvalidValue: "",
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+
+			// Act & Assert
+			unitary.ConsistenceTest(test)
 		})
 	}
 }

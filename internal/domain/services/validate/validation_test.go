@@ -1,4 +1,4 @@
-package validation
+package validate
 
 import (
 	"regexp"
@@ -17,7 +17,7 @@ type test struct {
 	mode        checkMode
 }
 
-func Test_Validate_NoError(t *testing.T) {
+func TestValidateNoError(t *testing.T) {
 	// Arrange
 	const (
 		fieldName  = "password"
@@ -25,28 +25,27 @@ func Test_Validate_NoError(t *testing.T) {
 	)
 
 	// Act
-	err := Validate(fieldName, fieldValue, IsBlank(ErrUnknown))
+	err := New(fieldName, fieldValue)
 
 	// Assert
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 // Refatorar !!!
 // Verificar se a quantidade de erros esperados está sendo retornada
 // Verificar se os erros estão sendo retornados
-func Test_Validate_WithError(t *testing.T) {
+func TestValidateWithError(t *testing.T) {
 	// Arrange
 	const fieldValue = "123456"
 
 	// Act
-	err := Validate("field", fieldValue, CheckNumbers(Disallow, ErrUnknown))
+	err := New("field", fieldValue, CheckNumbers(Disallow))
 
 	// Assert
-	require.NotNil(t, err)
-	require.Contains(t, err.CodeErrors, ErrUnknown)
+	require.Error(t, err)
 }
 
-func Test_IsBlank_NoError(t *testing.T) {
+func TestIsBlankNoError(t *testing.T) {
 	// Arrange
 	testsCases := []test{
 		{
@@ -71,15 +70,15 @@ func Test_IsBlank_NoError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("name", tt.value, IsBlank(ErrUnknown))
+			err := New("name", tt.value)
 
 			// Assert
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
 
-func Test_IsBlank_WithError(t *testing.T) {
+func TestIsBlankWithError(t *testing.T) {
 	// Arrange
 	testsCases := []test{
 		{
@@ -96,7 +95,7 @@ func Test_IsBlank_WithError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("field", tt.value, IsBlank(ErrUnknown))
+			err := New("field", tt.value)
 
 			// Assert
 			require.NotNil(t, err)
@@ -104,7 +103,7 @@ func Test_IsBlank_WithError(t *testing.T) {
 	}
 }
 
-func Test_IsLengthEqualTo_NoError(t *testing.T) {
+func TestIsLengthEqualToNoError(t *testing.T) {
 	// Arrange
 	testsCases := []test{
 		{
@@ -133,15 +132,15 @@ func Test_IsLengthEqualTo_NoError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("field", tt.value, IsLengthEqualTo(tt.length, ErrUnknown))
+			err := New("field", tt.value, IsLengthEqualTo(tt.length))
 
 			// Assert
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
 
-func Test_IsLengthEqualTo_WithError(t *testing.T) {
+func TestIsLengthEqualToWithError(t *testing.T) {
 	// Arrange
 	testsCases := []test{
 		{
@@ -160,7 +159,7 @@ func Test_IsLengthEqualTo_WithError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("field", tt.value, IsLengthEqualTo(tt.length, ErrUnknown))
+			err := New("field", tt.value, IsLengthEqualTo(tt.length))
 
 			// Assert
 			require.NotNil(t, err)
@@ -168,7 +167,7 @@ func Test_IsLengthEqualTo_WithError(t *testing.T) {
 	}
 }
 
-func Test_CheckSpecialChars_NoError(t *testing.T) {
+func TestCheckSpecialCharsNoError(t *testing.T) {
 	// Arrange
 	testsCases := []test{
 		{
@@ -187,15 +186,15 @@ func Test_CheckSpecialChars_NoError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("field", tt.value, CheckSpecialChars(tt.mode, ErrUnknown))
+			err := New("field", tt.value, CheckSpecialChars(tt.mode))
 
 			// Assert
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
 
-func Test_CheckSpecialChars_WithError(t *testing.T) {
+func TestCheckSpecialCharsWithError(t *testing.T) {
 	// Arrange
 	testsCases := []test{
 		{
@@ -214,7 +213,7 @@ func Test_CheckSpecialChars_WithError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("field", tt.value, CheckSpecialChars(tt.mode, ErrUnknown))
+			err := New("field", tt.value, CheckSpecialChars(tt.mode))
 
 			// Assert
 			require.NotNil(t, err)
@@ -222,7 +221,7 @@ func Test_CheckSpecialChars_WithError(t *testing.T) {
 	}
 }
 
-func Test_CheckNumbers_NoError(t *testing.T) {
+func TestCheckNumbersNoError(t *testing.T) {
 	// Arrange
 	testsCases := []test{
 		{
@@ -241,15 +240,15 @@ func Test_CheckNumbers_NoError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("field", CheckNumbers(tt.mode, ErrUnknown))
+			err := New("field", CheckNumbers(tt.mode))
 
 			// Assert
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
 
-func Test_CheckNumbers_WithError(t *testing.T) {
+func TestCheckNumbersWithError(t *testing.T) {
 	// Arrange
 	testsCases := []test{
 		{
@@ -278,15 +277,15 @@ func Test_CheckNumbers_WithError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("field", tt.value, CheckNumbers(tt.mode, ErrUnknown))
+			err := New("field", tt.value, CheckNumbers(tt.mode))
 
 			// Assert
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 		})
 	}
 }
 
-func Test_CheckLetters_NoError(t *testing.T) {
+func TestCheckLettersNoError(t *testing.T) {
 	// Arrange
 	testsCases := []test{
 		{
@@ -305,15 +304,15 @@ func Test_CheckLetters_NoError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("field", tt.value, CheckLetters(tt.mode, ErrUnknown))
+			err := New("field", tt.value, CheckLetters(tt.mode))
 
 			// Assert
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
 
-func Test_CheckLetters_WithError(t *testing.T) {
+func TestCheckLettersWithError(t *testing.T) {
 	// Arrange
 	testsCases := []test{
 		{
@@ -332,147 +331,40 @@ func Test_CheckLetters_WithError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("field", tt.value, CheckLetters(tt.mode, ErrUnknown))
+			err := New("field", tt.value, CheckLetters(tt.mode))
 
 			// Assert
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 		})
 	}
 }
 
-func Test_CheckLowerCaseLetters_NoError(t *testing.T) {
-	// Arrange
-	testsCases := []test{
-		{
-			description: "string not have lowercase letters, check mode set to 'disallow'",
-			value:       "PINK",
-			mode:        Disallow,
-		},
-		{
-			description: "string have lowercase letters, check mode set to 'require'",
-			value:       "pindaíbaSSSSS",
-			mode:        Require,
-		},
-	}
 
-	for _, tt := range testsCases {
-		t.Run(tt.description, func(t *testing.T) {
-
-			// Act
-			err := Validate("field", tt.value, CheckLowerCaseLetters(tt.mode, ErrUnknown))
-
-			// Assert
-			assert.Nil(t, err)
-		})
-	}
-}
-
-func Test_CheckLowerCaseLetters_WithError(t *testing.T) {
-	// Arrange
-	testsCases := []test{
-		{
-			description: "string with lower case letters, check mode set to 'disallow'",
-			value:       "EMma",
-			mode:        Disallow,
-		},
-		{
-			description: "string not have lowercase letters, check mode set to 'require'",
-			value:       "LAMMA",
-			mode:        Require,
-		},
-	}
-
-	for _, tt := range testsCases {
-		t.Run(tt.description, func(t *testing.T) {
-
-			// Act
-			err := Validate("field", tt.value, CheckLowerCaseLetters(tt.mode, ErrUnknown))
-
-			// Assert
-			assert.NotNil(t, err)
-		})
-	}
-}
-
-func Test_CheckUpperCaseLetters_NoError(t *testing.T) {
-	// Arrange
-	testsCases := []test{
-		{
-			description: "string not have uppercase letters, check mode set to 'disallow'",
-			value:       "mindflow 2024 $",
-			mode:        Disallow,
-		},
-		{
-			description: "string have uppercase letters, check mode set to 'require'",
-			value:       "killswitch ENGAGE 123 !@#",
-			mode:        Require,
-		},
-	}
-
-	for _, tt := range testsCases {
-		t.Run(tt.description, func(t *testing.T) {
-
-			// Act
-			err := Validate("field", tt.value, CheckUpperCaseLetters(tt.mode, ErrUnknown))
-
-			// Assert
-			assert.Nil(t, err)
-		})
-	}
-}
-
-func Test_CheckUpperCaseLetters_WithError(t *testing.T) {
-	// Arrange
-	testsCases := []test{
-		{
-			description: "string have uppercase letters, check mode set to 'disallow'",
-			value:       "RED HOT chil peper 1971",
-			mode:        Disallow,
-		},
-		{
-			description: "string not have uppercase letters, check mode set to 'require'",
-			value:       "post malone #1",
-			mode:        Require,
-		},
-	}
-
-	for _, tt := range testsCases {
-		t.Run(tt.description, func(t *testing.T) {
-
-			// Act
-			err := Validate("field", tt.value, CheckUpperCaseLetters(tt.mode, ErrUnknown))
-
-			// Assert
-			assert.NotNil(t, err)
-		})
-	}
-}
-
-func Test_IsFormatValid_NoError(t *testing.T) {
+func TestIsFormatValidNoError(t *testing.T) {
 	// Arrange
 	re := regexp.MustCompile(`[a-z]`)
 	const value = "valid: string contains only letters"
 
 	// Act
-	err := Validate("field", value, IsFormatValid(re, ErrUnknown))
+	err := New("field", value, IsFormatValid(re, ErrFieldCannotBeEmpty))
 
 	// Assert
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
-func Test_IsFormatValid_WithError(t *testing.T) {
+func TestIsFormatValidWithError(t *testing.T) {
 	// Arrange
 	re := regexp.MustCompile(`^[0-9]+$`)
 	const value = "valid: string contains only letters"
 
 	// Act
-	err := Validate("field", value, IsFormatValid(re, ErrUnknown))
+	err := New("field", value, IsFormatValid(re, ErrFieldCannotBeEmpty))
 
 	// Assert
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
-func Test_CheckWithRegex_NoError(t *testing.T) {
+func TestCheckWithRegexNoError(t *testing.T) {
 	// Arrange
 	re := regexp.MustCompile(`^[0-9]{3,5}$`)
 	testsCases := []test{
@@ -492,15 +384,15 @@ func Test_CheckWithRegex_NoError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("field", tt.value, CheckWithRegex(re, tt.mode, ErrUnknown))
+			err := New("field", tt.value, CheckWithRegex(re, tt.mode, ErrFieldCannotBeEmpty))
 
 			// Assert
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
 
-func Test_CheckWithRegex_WithError(t *testing.T) {
+func TestCheckWithRegexWithError(t *testing.T) {
 	// Arrange
 	re := regexp.MustCompile(`^[0-9]{3,5}$`)
 	testsCases := []test{
@@ -520,152 +412,60 @@ func Test_CheckWithRegex_WithError(t *testing.T) {
 		t.Run(tt.description, func(t *testing.T) {
 
 			// Act
-			err := Validate("field", tt.value, CheckWithRegex(re, tt.mode, ErrUnknown))
+			err := New("field", tt.value, CheckWithRegex(re, tt.mode, ErrFieldCannotBeEmpty))
 
 			// Assert
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 		})
 	}
 }
 
-func Test_IsValueInRange_NoError(t *testing.T) {
-	// Arrange
-	values := []string{"apple", "banana", "orange"}
-	testsCases := []struct {
-		test
-		ignoreCase bool
-	}{
-		{
-			test: test{
-				description: "value is in the list, ingore case is true",
-				value:       "APPLE",
-			},
-			ignoreCase: true,
-		},
-		{
-			test: test{
-				description: "valid: value is in the list, ignore case is false",
-				value:       "banana",
-			},
-			ignoreCase: false,
-		},
-	}
-
-	for _, tt := range testsCases {
-		t.Run(tt.description, func(t *testing.T) {
-
-			// Act
-			err := Validate("field", tt.value, IsValueInRange(values, tt.ignoreCase, ErrUnknown))
-
-			// Assert
-			assert.Nil(t, err)
-		})
-	}
-}
-
-func Test_IsValueInRange_WithError(t *testing.T) {
-	// Arrange
-	values := []string{"apple", "banana", "orange"}
-	testsCases := []struct {
-		test
-		ignoreCase bool
-	}{
-		{
-			test: test{
-				description: "value is not in the list",
-				value:       "sleeve",
-			},
-			ignoreCase: true,
-		},
-		{
-			test: test{
-				description: "value in the list, but ignore case is false",
-				value:       "Apple",
-			},
-			ignoreCase: false,
-		},
-	}
-
-	for _, tt := range testsCases {
-		t.Run(tt.description, func(t *testing.T) {
-
-			// Act
-			err := Validate("field", tt.value, IsValueInRange(values, tt.ignoreCase, ErrUnknown))
-
-			// Assert
-			assert.NotNil(t, err)
-		})
-	}
-}
-
-func Test_IsFutureDate_NoError(t *testing.T) {
-	// Arrange
-	currentDate := time.Now()
-
-	// Act
-	err := Validate("current_date", currentDate, IsFutureDate(ErrUnknown))
-
-	// Assert
-	assert.Nil(t, err)
-}
-
-func Test_IsFutureDate_WithError(t *testing.T) {
-	// Arrange
-	currentDate := time.Now().AddDate(0, 0, +1)
-
-	// Act
-	err := Validate("current_date", currentDate, IsFutureDate(ErrUnknown))
-
-	// Assert
-	assert.NotNil(t, err)
-}
-
-func Test_IsBeforeThan_NoError(t *testing.T) {
+func TestIsBeforeThanNoError(t *testing.T) {
 	// Arrange
 	minDate := time.Now().AddDate(-18, 0, 0)   // 2006
 	birthDate := time.Now().AddDate(-25, 0, 0) // 1999
 
 	// Act
-	err := Validate("birth_date", birthDate, IsBeforeThan(minDate, ErrUnknown))
+	err := New("birth_date", birthDate, IsBeforeThan(minDate, ErrFieldCannotBeEmpty))
 
 	// Assert
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
-func Test_IsBeforeThan_WithError(t *testing.T) {
+func TestIsBeforeThanWithError(t *testing.T) {
 	// Arrange
 	minDate := time.Now().AddDate(-18, 0, 0)
 	birthDate := time.Now().AddDate(-18, 0, +1)
 
 	// Act
-	err := Validate("current_date", birthDate, IsBeforeThan(minDate, ErrUnknown))
+	err := New("current_date", birthDate, IsBeforeThan(minDate, ErrFieldCannotBeEmpty))
 
 	// Assert
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
-func Test_IIsAfterThan_NoError(t *testing.T) {
+func TestIsAfterThanNoError(t *testing.T) {
 	// Arrange
 	maxDate := time.Now().AddDate(-100, 0, 0)
 	birthDate := time.Now().AddDate(-100, 0, 0)
 
 	// Act
-	err := Validate("current_date", birthDate, IsAfterThan(maxDate, ErrUnknown))
+	err := New("current_date", birthDate, IsAfterThan(maxDate, ErrFieldCannotBeEmpty))
 
 	// Assert
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
-func Test_IIsAfterThan_WithError(t *testing.T) {
+func TestIsAfterThanWithError(t *testing.T) {
 	// Arrange
 	maxDate := time.Now().AddDate(-100, 0, 0)
 	birthDate := time.Now().AddDate(-100, 0, -1)
 
 	// Act
-	err := Validate("current_date", birthDate, IsAfterThan(maxDate, ErrUnknown))
+	err := New("current_date", birthDate, IsAfterThan(maxDate, ErrFieldCannotBeEmpty))
 
 	// Assert
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 type testString struct {
@@ -675,7 +475,7 @@ type testString struct {
 	value           string
 }
 
-func Test_IsLengthInRange_NoError(t *testing.T) {
+func TestIsLengthInRangeNoError(t *testing.T) {
 	// Arrange
 	testsCases := []testString{
 		{
@@ -696,15 +496,15 @@ func Test_IsLengthInRange_NoError(t *testing.T) {
 		t.Run(tt.testDescription, func(t *testing.T) {
 
 			// Act
-			err := Validate("quantity", tt.value, IsLengthInRange(tt.min, tt.max, ErrUnknown))
+			err := New("quantity", tt.value, IsLengthInRange(tt.min, tt.max))
 
 			// Assert
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
 
-func Test_IsLengthInRange_WithError(t *testing.T) {
+func TestIsLengthInRangeWithError(t *testing.T) {
 	// Arrange
 	testsCases := []testString{
 		{
@@ -725,10 +525,10 @@ func Test_IsLengthInRange_WithError(t *testing.T) {
 		t.Run(tt.testDescription, func(t *testing.T) {
 
 			// Act
-			err := Validate("quantity", tt.value, IsLengthInRange(tt.min, tt.max, ErrUnknown))
+			err := New("quantity", tt.value, IsLengthInRange(tt.min, tt.max))
 
 			// Assert
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 		})
 	}
 }
@@ -740,7 +540,7 @@ type testNumber struct {
 	value           int
 }
 
-func Test_IsInRange_NoError(t *testing.T) {
+func TestIsInRangeNoError(t *testing.T) {
 	// Arrange
 	testsCases := []testNumber{
 		{
@@ -761,15 +561,15 @@ func Test_IsInRange_NoError(t *testing.T) {
 		t.Run(tt.testDescription, func(t *testing.T) {
 
 			// Act
-			err := Validate("value", tt.value, IsInRange(tt.min, tt.max, ErrUnknown))
+			err := New("value", tt.value, IsInRange(tt.min, tt.max))
 
 			// Assert
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
 
-func Test_IsInRange_WithError(t *testing.T) {
+func TestIsInRangeWithError(t *testing.T) {
 	// Arrange
 	testsCases := []testNumber{
 		{
@@ -790,10 +590,10 @@ func Test_IsInRange_WithError(t *testing.T) {
 		t.Run(tt.testDescription, func(t *testing.T) {
 
 			// Act
-			err := Validate("value", tt.value, IsInRange(tt.min, tt.max, ErrUnknown))
+			err := New("value", tt.value, IsInRange(tt.min, tt.max))
 
 			// Assert
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 		})
 	}
 }
@@ -804,7 +604,7 @@ type testGenerics struct {
 	flag            any
 }
 
-func Test_IsEqualTo_NoError(t *testing.T) {
+func TestIsEqualToNoError(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -835,15 +635,15 @@ func Test_IsEqualTo_NoError(t *testing.T) {
 		t.Run(tt.testDescription, func(t *testing.T) {
 
 			// Act
-			err := Validate("quantity", tt.value, IsEqualTo(tt.flag, ErrUnknown))
+			err := New("quantity", tt.value, IsEqualTo(tt.flag, ErrFieldCannotBeEmpty))
 
 			// Assert
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
 
-func Test_IsEqualTo_WithError(t *testing.T) {
+func TestIsEqualToWithError(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -879,10 +679,10 @@ func Test_IsEqualTo_WithError(t *testing.T) {
 		t.Run(tt.testDescription, func(t *testing.T) {
 
 			// Act
-			err := Validate[any]("quantity", tt.value, IsEqualTo(tt.flag, ErrUnknown))
+			err := New[any]("quantity", tt.value, IsEqualTo(tt.flag, ErrFieldCannotBeEmpty))
 
 			// Assert
-			assert.NotNil(t, err)
+			assert.Error(t, err)
 		})
 	}
 }

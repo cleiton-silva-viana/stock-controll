@@ -1,10 +1,11 @@
 package order
 
 import (
-	"stock-controll/internal/domain/entity/common"
-	validationError "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
 	"time"
+
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
 type Product struct {
@@ -13,31 +14,31 @@ type Product struct {
 	price    int
 }
 
-type orderStatus string
+type OrderStatus string
 
 const (
-	pending    orderStatus = "pending"
-	completed  orderStatus = "completed"
-	inProgress orderStatus = "in_progress"
-	canceled   orderStatus = "canceled"
+	pending    OrderStatus = "pending"
+	completed  OrderStatus = "completed"
+	inProgress OrderStatus = "in_progress"
+	canceled   OrderStatus = "canceled"
 )
 
-type order struct {
-	uuid string
+type Order struct {
+	uuid               string
 	buyerUUID          string
 	supplierUUID       string
 	requestMadeOn      time.Time
 	expectedDeliveryOn time.Time
 	products           []Product
-	status             orderStatus
+	status             OrderStatus
 	// qrCode ---> implementar
 	// profPayment ---> implementar
 }
 
-func NewOrder(buyerUUID, supplierUUID string, expectedDelivery time.Time, products []Product) (*order, validationError.IValidationError) {
-	var orderError = validationError.NewValidationError("order")
-	var orderInstance = &order{
-		uuid: common.GenerateUUID(),
+func NewOrder(buyerUUID, supplierUUID string, expectedDelivery time.Time, products []Product) (*Order, error) {
+	var orderError = validationerrors.New("order")
+	var orderInstance = &Order{
+		uuid:               uuid.New(),
 		buyerUUID:          buyerUUID,
 		supplierUUID:       supplierUUID,
 		products:           products,
@@ -47,8 +48,8 @@ func NewOrder(buyerUUID, supplierUUID string, expectedDelivery time.Time, produc
 	}
 
 	orderError.
-		AddValidationError(orderInstance.ValidateUUID(buyerUUID)).
-		AddValidationError(orderInstance.ValidateUUID(supplierUUID)).
+		AddValidationError(uuid.IsValid("buyer_uuid", buyerUUID)).
+		AddValidationError(uuid.IsValid("supplier_uuid", supplierUUID)).
 		AddValidationError(orderInstance.setProducts(products)).
 		AddValidationError(orderInstance.UpdateExpectedDelivery(expectedDelivery))
 
@@ -59,43 +60,49 @@ func NewOrder(buyerUUID, supplierUUID string, expectedDelivery time.Time, produc
 	return orderInstance, nil
 }
 
-func (o *order) GetUUID() string {
+func (o *Order) UUID() string {
 	return o.uuid
 }
 
 // TODO: tornar verificações mais robustas
 /*
 	Validação de Produtos: O método setProducts atualmente apenas verifica se
-	a lista de produtos está vazia. Você pode querer adicionar validações adicionais, 
+	a lista de produtos está vazia. Você pode querer adicionar validações adicionais,
 	como verificar se cada produto tem um preço e uma quantidade válidos.
 */
-func (o *order) setProducts(products []Product) *validation.FieldError {
+
+const ErrMinimOneProductRequiredForRestock = "ERR_MINIMUM_ONE_PRODUCT_REQUIRED_FOR_RESTOCK"
+
+func (o *Order) setProducts(products []Product) error {
 	if len(products) == 0 {
-		return &validation.FieldError{
-			FieldName:  "products",
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "products",
+			CodeError: ErrMinimOneProductRequiredForRestock,
 		}
 	}
 	return nil
 }
 
-func (o *order) GetBuyerUUID() string {
+func (o *Order) BuyerUUID() string {
 	return o.buyerUUID
 }
 
-func (o *order) GetSupplierUUID() string {
+func (o *Order) SupplierUUID() string {
 	return o.supplierUUID
 }
 
-func (o *order) GetExpectedDelivery() time.Time {
+func (o *Order) ExpectedDelivery() time.Time {
 	return o.expectedDeliveryOn
 }
 
-func (o *order) UpdateExpectedDelivery(expectedDelivery time.Time) *validation.FieldError {
-	var err = validation.Validate[time.Time](
+// TODO: Este erro abaixo deve ser genérico, ou seja, qualquer operação análoga, deve usar este error code
+const ErrDeliveryDateCannotBePast = "ERR_DELIVERY_DATE_CANNOT_BE_PAST"
+
+func (o *Order) UpdateExpectedDelivery(expectedDelivery time.Time) error {
+	var err = validate.New[time.Time](
 		"expected_delivery",
 		expectedDelivery,
-		validation.IsBeforeThan(o.requestMadeOn, validation.ErrUnknown),
+		validate.IsBeforeThan(o.requestMadeOn, ErrDeliveryDateCannotBePast),
 	)
 	if err == nil {
 		o.expectedDeliveryOn = expectedDelivery
@@ -103,26 +110,32 @@ func (o *order) UpdateExpectedDelivery(expectedDelivery time.Time) *validation.F
 	return err
 }
 
-func (o *order) GetRequestOn() time.Time {
+func (o *Order) RequestOn() time.Time {
 	return o.requestMadeOn
 }
 
-func (o *order) GetStatus() orderStatus {
+func (o *Order) Status() OrderStatus {
 	return o.status
 }
 
-func (o *order) SetStatus(newStatus orderStatus) *validation.FieldError {
+// TODO: os erros devem ser genéricos, aplicados a todos os tipos de relatórios
+const (
+	ErrStatusAlreadyAssigned  = "ERR_STATUS_ALREADY_ASSIGNED"
+	ErrReportCannotBeModified = "ERR_REPORT_CANNOT_BE_MODIFIED"
+)
+
+func (o *Order) SetStatus(newStatus OrderStatus) error {
 	if o.status == newStatus {
-		return &validation.FieldError{
-			FieldName:  "status",
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "status",
+			CodeError: ErrStatusAlreadyAssigned,
 		}
 	}
 
 	if o.status == completed || o.status == canceled {
-		return &validation.FieldError{
-			FieldName:  "status",
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "status",
+			CodeError: ErrReportCannotBeModified,
 		}
 	}
 

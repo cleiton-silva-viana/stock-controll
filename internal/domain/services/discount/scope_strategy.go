@@ -1,13 +1,13 @@
 package discount
 
 import (
-	"stock-controll/internal/domain/entity/common"
 	"stock-controll/internal/domain/entity/product"
-	"stock-controll/internal/domain/validation"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
 type IProductSpecificDiscountStrategy interface {
-	Apply(item product.IProduct, purchasedQuantity int) (DiscountSummary, *validation.FieldError)
+	Apply(item product.IProduct, purchasedQuantity int) (DiscountSummary, error)
 	IsProductValid(item product.IProduct) bool
 }
 
@@ -15,15 +15,16 @@ type TemplateDiscountStrategy struct {
 	discount IDiscountCalculationStrategy
 }
 
-func (b *TemplateDiscountStrategy) Apply(item product.IProduct, quantityPurchased int) (DiscountSummary, *validation.FieldError) {
+// TODO: implementar error
+func (b *TemplateDiscountStrategy) Apply(item product.IProduct, quantityPurchased int) (DiscountSummary, error) {
 	if b.IsProductValid(item) {
-		return b.discount.Apply(item.GetPrice(), quantityPurchased)
+		return b.discount.Apply(item.Price(), quantityPurchased)
 	}
 	return DiscountSummary{
 			totalDiscountApplied: 0,
-			finalTotal:           item.GetPrice() * float64(quantityPurchased),
-		}, &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+			finalTotal:           item.Price() * float64(quantityPurchased),
+		}, &validate.FieldError{
+			CodeError: "",
 		}
 }
 
@@ -36,10 +37,11 @@ type GlobalDiscountStrategy struct {
 }
 
 // TODO: Adicionar validações
-func NewGlobalDiscountStrategy(discount IDiscountCalculationStrategy) (*GlobalDiscountStrategy, *validation.FieldError) {
+// TODO: implementar error
+func NewGlobalDiscountStrategy(discount IDiscountCalculationStrategy) (*GlobalDiscountStrategy, error) {
 	if discount == nil {
-		return nil, &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return nil, &validate.FieldError{
+			CodeError: "",
 		}
 	}
 
@@ -57,10 +59,11 @@ type SpecificCategoryDiscountStrategy struct {
 	categories map[string]struct{}
 }
 
-func NewSpecificCategoryDiscountStrategy(categoriesUUIDs map[string]struct{}, discount IDiscountCalculationStrategy) (*SpecificCategoryDiscountStrategy, *validation.FieldError) {
+// TODO: implementar error
+func NewSpecificCategoryDiscountStrategy(categoriesUUIDs map[string]struct{}, discount IDiscountCalculationStrategy) (*SpecificCategoryDiscountStrategy, error) {
 	if discount == nil {
-		return nil, &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return nil, &validate.FieldError{
+			CodeError: "",
 		}
 	}
 
@@ -76,7 +79,7 @@ func NewSpecificCategoryDiscountStrategy(categoriesUUIDs map[string]struct{}, di
 }
 
 func (c *SpecificCategoryDiscountStrategy) IsProductValid(item product.IProduct) bool {
-	_, exists := c.categories[item.GetCategoryUUID()]
+	_, exists := c.categories[item.CategoryUUID()]
 	return exists
 }
 
@@ -85,10 +88,11 @@ type SpecificBrandDiscountStrategy struct {
 	brands map[string]struct{}
 }
 
-func NewSpecificBrandDiscountStrategy(brandsUUIDs map[string]struct{}, discount IDiscountCalculationStrategy) (*SpecificBrandDiscountStrategy, *validation.FieldError) {
+// TODO: implementar error
+func NewSpecificBrandDiscountStrategy(brandsUUIDs map[string]struct{}, discount IDiscountCalculationStrategy) (*SpecificBrandDiscountStrategy, error) {
 	if discount == nil {
-		return nil, &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return nil, &validate.FieldError{
+			CodeError: "",
 		}
 	}
 
@@ -104,7 +108,7 @@ func NewSpecificBrandDiscountStrategy(brandsUUIDs map[string]struct{}, discount 
 }
 
 func (b *SpecificBrandDiscountStrategy) IsProductValid(item product.IProduct) bool {
-	_, exists := b.brands[item.GetBrandUUID()]
+	_, exists := b.brands[item.BrandUUID()]
 	return exists
 }
 
@@ -113,10 +117,11 @@ type SpecificProductsDiscount struct {
 	productsUUID map[string]struct{}
 }
 
-func NewSpecificProductsDiscount(productsUUID map[string]struct{}, discount IDiscountCalculationStrategy) (*SpecificProductsDiscount, *validation.FieldError) {
+// TODO: implementar error
+func NewSpecificProductsDiscount(productsUUID map[string]struct{}, discount IDiscountCalculationStrategy) (*SpecificProductsDiscount, error) {
 	if discount == nil {
-		return nil, &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return nil, &validate.FieldError{
+			CodeError: "",
 		}
 	}
 
@@ -132,31 +137,32 @@ func NewSpecificProductsDiscount(productsUUID map[string]struct{}, discount IDis
 }
 
 func (s *SpecificProductsDiscount) IsProductValid(item product.IProduct) bool {
-	_, exists := s.productsUUID[item.GetUUID()]
+	_, exists := s.productsUUID[item.UUID()]
 	return exists
 }
 
-func validateUUIDS(resouceName string, uuids map[string]struct{}) (map[string]struct{}, *validation.FieldError) {
+// TODO: implementar error
+func validateUUIDS(resouceName string, uuids map[string]struct{}) (map[string]struct{}, error) {
 	if uuids == nil {
-		return nil, &validation.FieldError{
-			FieldName:  resouceName,
-			CodeErrors: []string{"o recurso esperado não pode ser"},
+		return nil, &validate.FieldError{
+			FieldName: resouceName,
+			CodeError: "",
 		}
 	}
 
 	var validUUIDs = make(map[string]struct{})
 
-	for uuid := range uuids {
-		isValid := common.IsValidUUUID(uuid)
-		if isValid {
-			validUUIDs[uuid] = struct{}{}
+	for u := range uuids {
+		if err := uuid.IsValid("", u); err != nil {
+			validUUIDs[u] = struct{}{}
 		}
 	}
 
 	if len(uuids) == 0 {
-		return nil, &validation.FieldError{
-			FieldName:  resouceName,
-			CodeErrors: []string{"deve haver ao menos um %s para criar o desconto..."},
+		// TODO: criar erro
+		return nil, &validate.FieldError{
+			FieldName: resouceName,
+			CodeError: "deve haver ao menos um x para criar o desconto...",
 		}
 	}
 

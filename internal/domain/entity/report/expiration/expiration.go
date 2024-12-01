@@ -1,13 +1,14 @@
 package expiration
 
 import (
-	"stock-controll/internal/domain/entity/common"
-	validationError "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
 	"time"
+
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
-type expiration struct {
+type Expiration struct {
 	uuid         string
 	reporterUUID string
 	productUUID  string
@@ -15,32 +16,39 @@ type expiration struct {
 	expireDate   time.Time
 }
 
-func NewShortExpirationDate(reporterUUID, productUUID string, quantity int, expireAs time.Time) (*expiration, validationError.IValidationError) {
-	var expirationError = validationError.NewValidationError("expiration")
-	var expirationInstance = expiration{}
+const (
+	minQuantity                    = 1
+	maxQuantity                    = 100
+	ErrExpiredProductReported      = "ERR_EXPIRED_PRODUCT_REPORTED"
+	ErrProductExpirationDateTooFar = "ERR_PRODUCT_EXPIRATION_DATE_TOO_FAR"
+	ErrLowQuantityProductReported  = "ERR_LOW_QUANTITY_PRODUCT_REPORTED"
+)
 
-	expirationError.
-		AddValidationError(expirationInstance.ValidateUUID(reporterUUID)).
-		AddValidationError(expirationInstance.ValidateUUID(productUUID)).
-		AddValidationError(
-			validation.Validate[int](
-				"quantity",
-				quantity,
-				validation.IsInRange(
-					1, 1000, validation.ErrUnknown))).
-		AddValidationError(
-			validation.Validate[time.Time](
-				"expire_date",
-				expireAs,
-				validation.IsAfterThan(time.Now(), validation.ErrUnknown),
-				validation.IsBeforeThan(time.Now().AddDate(0, 0, 45), validation.ErrUnknown),
-			))
+/*/ TODO: implementar no próprio produto, as métricas para definir:
+		o valor a ser considerado como baixa quantidade
+		o limite de tempo até considerar o produto com data de vencimento próxima 
+*/
+func New(reporterUUID, productUUID string, quantity int, expireAs time.Time) (*Expiration, error) {
+	var expirationError = validationerrors.New("expiration").
+		AddValidationError(uuid.IsValid("reporte_uuid", reporterUUID)).
+		AddValidationError(uuid.IsValid("product_uuid", productUUID)).
+		AddValidationError(validate.New(
+			"quantity",
+			quantity,
+			validate.IsInRange(minQuantity, maxQuantity),
+		)).
+		AddValidationError(validate.New[time.Time](
+			"expire_date",
+			expireAs,
+			validate.IsBeforeThan(time.Now(), ErrExpiredProductReported),
+		))
+
 	if expirationError.HasError() {
 		return nil, expirationError
 	}
 
-	return &expiration{
-		uuid:         common.GenerateUUID(),
+	return &Expiration{
+		uuid:         uuid.New(),
 		reporterUUID: reporterUUID,
 		productUUID:  productUUID,
 		quantity:     quantity,
@@ -48,26 +56,26 @@ func NewShortExpirationDate(reporterUUID, productUUID string, quantity int, expi
 	}, nil
 }
 
-func (e *expiration) GetUUID() string {
+func (e *Expiration) UUID() string {
 	return e.uuid
 }
 
-func (e *expiration) GetReporterUUID() string {
+func (e *Expiration) ReporterUUID() string {
 	return e.reporterUUID
 }
 
-func (e *expiration) GetProductUUID() string {
+func (e *Expiration) ProductUUID() string {
 	return e.productUUID
 }
 
-func (e *expiration) GetQuantity() int {
+func (e *Expiration) Quantity() int {
 	return e.quantity
 }
 
-func (e *expiration) GetExpirationDate() time.Time {
+func (e *Expiration) ExpirationDate() time.Time {
 	return e.expireDate
 }
 
-func (e *expiration) IsExpired() bool {
+func (e *Expiration) IsExpired() bool {
 	return time.Now().Unix() > e.expireDate.Unix()
 }

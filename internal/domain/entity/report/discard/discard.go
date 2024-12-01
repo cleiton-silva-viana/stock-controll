@@ -1,111 +1,116 @@
 package discard
 
 /*
-Tornar a estrutura discard imutável 
-pode exigir algumas mudanças na forma como você lida com a lógica de negócios, 
+Tornar a estrutura discard imutável
+pode exigir algumas mudanças na forma como você lida com a lógica de negócios,
 mas os benefícios em termos de segurança, previsibilidade e facilidade de teste
- geralmente compensam o esforço. 
- Avalie as necessidades do seu projeto 
- e considere se a imutabilidade é uma abordagem que 
+ geralmente compensam o esforço.
+ Avalie as necessidades do seu projeto
+ e considere se a imutabilidade é uma abordagem que
  se alinha com seus objetivos de design.
 */
 
 import (
-	"stock-controll/internal/domain/entity/common"
-	validationError "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
 	"time"
+
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
-type discardStatus string
+type DiscardStatus string
 
 const (
-	done discardStatus = "done"
-	toDo discardStatus = "to_do"
+	done DiscardStatus = "done"
+	toDo DiscardStatus = "to_do"
 )
 
-type discard struct {
-	uuid string
+type Discard struct {
+	uuid        string
 	checkerUUID string
 	productUUID string
 	batchUUID   string
 	quantity    int
 	createdAt   time.Time
 	heldIn      time.Time
-	status      discardStatus
+	status      DiscardStatus
 }
 
 const (
-	MinQuantityForDiscard  = 1
-	MaxQuantityForDiscard  = 1000
+	MinQuantity = 1
+	MaxQuantity = 1000
 )
 
-func NewDiscard(checkerUUID, productUUID, batchUUID string, quantity int) (*discard, validationError.IValidationError) {
-	var discardError = validationError.NewValidationError("discard")
-	var discardInstance = discard{
-		uuid: common.GenerateUUID(),
+func NewDiscard(checkerUUID, productUUID, batchUUID string, quantity int) (*Discard, error) {
+	var discardError = validationerrors.New("discard").
+		AddValidationError(uuid.IsValid("checker_uuid", checkerUUID)).
+		AddValidationError(uuid.IsValid("product_uuid", productUUID)).
+		AddValidationError(uuid.IsValid("batch_uuid", batchUUID)).
+		AddValidationError(
+			validate.New[int](
+				"quantity",
+				quantity,
+				validate.IsInRange(MinQuantity, MaxQuantity),
+			),
+		)
+
+	if discardError.HasError() {
+		return nil, discardError
+	}
+
+	return &Discard{
+		uuid:        uuid.New(),
 		checkerUUID: checkerUUID,
 		productUUID: productUUID,
 		batchUUID:   batchUUID,
 		quantity:    quantity,
 		status:      toDo,
 		createdAt:   time.Now(),
-	}
-
-	discardError.
-		AddValidationError(discardInstance.ValidateUUID(checkerUUID)).
-		AddValidationError(discardInstance.ValidateUUID(productUUID)).
-		AddValidationError(discardInstance.ValidateUUID(batchUUID)).
-		AddValidationError(
-			validation.Validate(
-				"quantity",
-				quantity,
-				validation.IsInRange(MinQuantityForDiscard, MaxQuantityForDiscard, validation.ErrUnknown)))
-
-	if discardError.HasError() {
-		return nil, discardError
-	}
-
-	return &discardInstance, nil
+	}, nil
 }
 
-func (d *discard) GetUUID() string {
+func (d *Discard) UUID() string {
 	return d.uuid
 }
 
-func (d *discard) GetCheckerUUID() string {
+func (d *Discard) CheckerUUID() string {
 	return d.checkerUUID
 }
 
-func (d *discard) GetProductUUID() string {
+func (d *Discard) ProductUUID() string {
 	return d.productUUID
 }
 
-func (d *discard) GetBatchUUID() string {
+func (d *Discard) BatchUUID() string {
 	return d.batchUUID
 }
 
-func (d *discard) GetQuantity() int {
+func (d *Discard) Quantity() int {
 	return d.quantity
 }
 
-func (d *discard) GetCreatedAt() time.Time {
+func (d *Discard) CreatedAt() time.Time {
 	return d.createdAt
 }
 
-func (d *discard) GetHeldIn() time.Time {
+func (d *Discard) HeldIn() time.Time {
 	return d.heldIn
 }
 
-func (d *discard) GetStatus() discardStatus {
+func (d *Discard) Status() DiscardStatus {
 	return d.status
 }
 
-func (d *discard) SetStatus(newStatus discardStatus) *validation.FieldError {
+const (
+	ErrStatusChangeNotAllowed = "ERR_STATUS_CHANGE_NOT_ALLOWED"
+	ErrInvalidDiscardOperationStatus = "ERR_INVALID_DISCARD_OPERATION_STATUS"
+)
+
+func (d *Discard) SetStatus(newStatus DiscardStatus) error {
 	if d.status == done {
-		return &validation.FieldError{
+		return &validate.FieldError{
 			FieldName:  "status",
-			CodeErrors: []string{string(validation.ErrUnknown)},
+			CodeError: ErrStatusChangeNotAllowed,
 		}
 	}
 
@@ -114,9 +119,9 @@ func (d *discard) SetStatus(newStatus discardStatus) *validation.FieldError {
 		d.heldIn = time.Now()
 		return nil
 	}
-	
-	return &validation.FieldError{
+
+	return &validate.FieldError{
 		FieldName:  "status",
-		CodeErrors: []string{string(validation.ErrUnknown)},
+		CodeError: ErrInvalidDiscardOperationStatus, 
 	}
 }

@@ -1,7 +1,7 @@
 
 services:
   sonarqube:
-    image: sonarqube:lts-community
+    image: sonarqube
     depends_on:
       - db
     networks:

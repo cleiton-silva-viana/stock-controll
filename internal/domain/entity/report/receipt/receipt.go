@@ -1,21 +1,22 @@
 package receipt
 
 import (
-	"stock-controll/internal/domain/entity/common"
-	validationError "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
 	"time"
+
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
-type receiptStatus string
+type ReceiptStatus string
 
 const (
-	inProgress receiptStatus = "in_progress"
-	accepted   receiptStatus = "accepted"
-	rejected   receiptStatus = "rejected"
+	inProgress ReceiptStatus = "in_progress"
+	accepted   ReceiptStatus = "accepted"
+	rejected   ReceiptStatus = "rejected"
 )
 
-type receipt struct {
+type Receipt struct {
 	uuid             string
 	orderUUID        string
 	lecturerUUID     string
@@ -23,21 +24,21 @@ type receipt struct {
 	observations     string
 	startedIn        time.Time
 	finishedOn       time.Time
-	status           receiptStatus
+	status           ReceiptStatus
 }
 
-func NewReceipt(orderUUID, lecturerUUID, manufacturerUUID string) (*receipt, validationError.IValidationError) {
-	var receptError = validationError.NewValidationError("recept")
-	var receptInstance = receipt{
-		uuid: common.GenerateUUID(),
+func NewReceipt(orderUUID, lecturerUUID, manufacturerUUID string) (*Receipt, error) {
+	var receptError = validationerrors.New("recept")
+	var receptInstance = Receipt{
+		uuid:      uuid.New(),
 		status:    inProgress,
 		startedIn: time.Now(),
 	}
 
 	receptError.
-		AddValidationError(receptInstance.ValidateUUID(orderUUID)).
-		AddValidationError(receptInstance.ValidateUUID(lecturerUUID)).
-		AddValidationError(receptInstance.ValidateUUID(manufacturerUUID))
+		AddValidationError(uuid.IsValid("order_uuid", orderUUID)).
+		AddValidationError(uuid.IsValid("lecturer_uuid", lecturerUUID)).
+		AddValidationError(uuid.IsValid("manufacturer_uuid", manufacturerUUID))
 
 	if receptError.HasError() {
 		return nil, receptError
@@ -46,19 +47,19 @@ func NewReceipt(orderUUID, lecturerUUID, manufacturerUUID string) (*receipt, val
 	return &receptInstance, nil
 }
 
-func (r *receipt) GetUUID() string {
+func (r *Receipt) UUID() string {
 	return r.uuid
 }
 
-func (r *receipt) GetOrderUUID() string {
+func (r *Receipt) OrderUUID() string {
 	return r.orderUUID
 }
 
-func (r *receipt) GetLecturerUUID() string {
+func (r *Receipt) LecturerUUID() string {
 	return r.lecturerUUID
 }
 
-func (r *receipt) GetManufacturerUUID() string {
+func (r *Receipt) ManufacturerUUID() string {
 	return r.manufacturerUUID
 }
 
@@ -67,10 +68,10 @@ const (
 	maxLengthForObservation = 200
 )
 
-func (r *receipt) SetObservations(note string) *validation.FieldError {
-	var err = validation.Validate("observation", note,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minLengthForObservation, maxLengthForObservation, validation.ErrUnknown),
+func (r *Receipt) SetObservations(note string) error {
+	var err = validate.New("observation", note,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minLengthForObservation, maxLengthForObservation),
 	)
 	if err == nil {
 		r.observations = note
@@ -78,15 +79,16 @@ func (r *receipt) SetObservations(note string) *validation.FieldError {
 	return err
 }
 
-func (r *receipt) GetStatus() receiptStatus {
+func (r *Receipt) Status() ReceiptStatus {
 	return r.status
 }
 
-func (r *receipt) AcceptOrder() *validation.FieldError {
+// TODO: adicionar erro
+func (r *Receipt) AcceptOrder() error {
 	if r.status != inProgress {
-		return &validation.FieldError{
-			FieldName:  "status",
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "status",
+			CodeError: "",
 		}
 	}
 	r.finishedOn = time.Now()
@@ -94,11 +96,12 @@ func (r *receipt) AcceptOrder() *validation.FieldError {
 	return nil
 }
 
-func (r *receipt) RejectOrder(cause string) *validation.FieldError {
+// TODO: adicionar error
+func (r *Receipt) RejectOrder(cause string) error {
 	if r.status != inProgress {
-		return &validation.FieldError{
-			FieldName:  "status",
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			FieldName: "status",
+			CodeError: "",
 		}
 	}
 	var err = r.SetObservations(cause)

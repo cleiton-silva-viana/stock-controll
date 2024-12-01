@@ -1,156 +1,184 @@
 package role
 
-// TODO: Refatorar - melhora ros testes, realizar testes para função não testadas
-
 import (
-	permissionEntity "stock-controll/internal/domain/entity/permission"
 	"strings"
 	"testing"
+
+	"stock-controll/internal/domain/entity/permission"
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
+
+	"stock-controll/test/unitary"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type roleStructForTest struct {
-	testDescription string
-	id              int
-	name            string
+var permission1, _ = permission.New("create")
+var permission2, _ = permission.New("update")
+var permission3, _ = permission.New("delete")
+var permission4, _ = permission.New("view")
+
+var data = Role{
+	uuid: uuid.New(),
+	name: "admin",
+	permissions: map[string]permission.Permission{
+		permission1.UUID(): *permission1,
+		permission2.UUID(): *permission2,
+		permission3.UUID(): *permission3,
+	},
 }
 
-func Test_Role_NewRole_NoError(t *testing.T) {
-	testsCases := []roleStructForTest{
+func TestNewNoError(t *testing.T) {
+	testsCases := []unitary.TestField[Role]{
 		{
-			testDescription: "name with minimum allowed characters",
-			id:              minIDNumberForRole,
-			name:            strings.Repeat("a", minNameLengthForRole),
+			Description: "name with minimum allowed characters",
+			Handler:     func(r *Role) { r.name = strings.Repeat("a", minNameLengthForRole) },
 		},
 		{
-			testDescription: "name with maximum allowed characters",
-			id:              maxIDNumberForRole,
-			name:            strings.Repeat("b", maxNameLengthForRole),
-		},
-		{
-			testDescription: "id with minimum allowed number",
-			id:              minIDNumberForRole,
-			name:            "valid role name",
-		},
-		{
-			testDescription: "id with maximum allowed number",
-			id:              maxIDNumberForRole,
-			name:            "another valid role name",
+			Description: "name with maximum allowed characters",
+			Handler:     func(r *Role) { r.name = strings.Repeat("b", maxNameLengthForRole) },
 		},
 	}
 
 	for _, tt := range testsCases {
-		t.Run(tt.testDescription, func(t *testing.T) {
+		t.Run(tt.Description, func(t *testing.T) {
+			dataCopy := data
+			tt.Handler(&dataCopy)
 
 			// Act
-			role, err := NewRole(tt.id, tt.name)
+			role, err := New(dataCopy.name)
 
 			// Assert
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			require.NotNil(t, role)
-			assert.Equal(t, role.GetID(), tt.id)
-			assert.Equal(t, role.GetName(), tt.name)
-			assert.NotNil(t, role.GetPermissions())
-			assert.Empty(t, role.GetPermissions())
+			assert.NoError(t, uuid.IsValid("", role.UUID()))
+			assert.Equal(t, role.Name(), dataCopy.name)
+			assert.NotNil(t, role.Permissions())
+			assert.Empty(t, role.Permissions())
 		})
 	}
 }
 
-func Test_Role_NewRole_WithError(t *testing.T) {
+func TestNewWithError(t *testing.T) {
 	// Arrange
-	testsCases := []struct {
-		testDescription string
-		roleID          int
-		roleName        string
-	}{
+	testsCases := []unitary.TestField[Role]{
 		{
-			testDescription: "role name is empty",
-			roleID:          10,
-			roleName:        "",
+			Description: "role name is empty",
+			Handler:     func(r *Role) { r.name = "" },
 		},
 		{
-			testDescription: "role name contain special characters",
-			roleID:          10,
-			roleName:        "Sell Pr@ducts",
+			Description: "role name contain special characters",
+			Handler:     func(r *Role) { r.name = "Sell Pr@ducts" },
 		},
 		{
-			testDescription: "role name is too shoort",
-			roleID:          9,
-			roleName:        strings.Repeat("a", minNameLengthForRole-1),
+			Description: "role name is too shoort",
+			Handler:     func(r *Role) { r.name = strings.Repeat("a", minNameLengthForRole-1) },
 		},
 		{
-			testDescription: "role name is too long",
-			roleID:          8,
-			roleName:        strings.Repeat("b", maxNameLengthForRole+1),
-		},
-		{
-			testDescription: "role id is less than allowed",
-			roleID:          minIDNumberForRole - 1,
-			roleName:        "sell product",
-		},
-		{
-			testDescription: "role id is greater than allowed",
-			roleID:          maxIDNumberForRole + 1,
-			roleName:        "sell product",
+			Description: "role name is too long",
+			Handler:     func(r *Role) { r.name = strings.Repeat("b", maxNameLengthForRole+1) },
 		},
 	}
 
 	for _, tt := range testsCases {
-		t.Run(tt.testDescription, func(t *testing.T) {
+		t.Run(tt.Description, func(t *testing.T) {
+			dataCopy := data
+			tt.Handler(&dataCopy)
 
 			// Act
-			role, err := NewRole(tt.roleID, tt.roleName)
+			role, err := New(dataCopy.name)
 
 			// Assert
 			assert.Nil(t, role)
-			require.NotNil(t, err)
+			require.Error(t, err)
+			assert.ErrorAs(t, err, &validationerrors.ValidationError{})
 		})
 	}
 }
 
-var role, _ = NewRole(30, "client")
-var manager = permissionEntity.GetPermissionManager()
-
-func Test_Role_AddPermission_NoError(t *testing.T) {
+func TestSetPermissionNoError(t *testing.T) {
 	// Arrange
-	manager.AddPermission(1, "view product")
-	permission, _ := manager.GetPermissionByID(1)
+	role := data
 
 	// Act
-	role.SetPermissions(*permission)
+	err := role.SetPermission(*permission4)
 
 	// Assert
-	assert.True(t, role.HasPermission(permission.GetID()))
-	assert.Equal(t, role.GetPermissionByID(permission.GetID()), *permission)
+	assert.NoError(t, err)
+	assert.Contains(t, role.Permissions(), permission4)
+	assert.Len(t, role.Permissions(), 4)
 }
 
-func Test_Role_SetPermissions_WithError(t *testing.T) {
+func TestSetPermissionsWithError(t *testing.T) {
 	// Arrange
-	manager.AddPermission(10, "read product")
-	permission, _ := manager.GetPermissionByID(10)
+	testCases := []unitary.TestDependence[permission.Permission]{
+		{
+			Description: "permissions is empty filled",
+			Dependency:  permission.Permission{},
+		},
+		{
+			Description: "add already registered permission",
+			Dependency:  *permission1,
+		},
+	}
 
-	// Act
-	err1 := role.SetPermissions(*permission)
-	err2 := role.SetPermissions(*permission)
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			role := data
+			// Act
+			err := role.SetPermission(test.Dependency)
 
-	// Assert
-	assert.Nil(t, err1)
-	require.NotNil(t, err2)
-	assert.True(t, role.HasPermission(permission.GetID()))
+			// Assert
+			assert.Error(t, err)
+			assert.Len(t, role.Permissions(), 3)
+		})
+	}
 }
 
-func Test_role_RemovePermission(t *testing.T) {
+func TestRemovePermissionNoError(t *testing.T) {
 	// Arrange
-	manager.AddPermission(10, "read product")
-	permission, _ := manager.GetPermissionByID(10)
-	role.SetPermissions(*permission)
+	permissionUUID := permission1.UUID()
+	role := data
 
 	// Act
-	role.RemovePermission(permission.GetID())
+	err := role.RemovePermission(permissionUUID)
 
 	// Assert
-	assert.NotContains(t, role.GetPermissions(), permission)
-	assert.False(t, role.HasPermission(permission.GetID()))
+	assert.NoError(t, err)
+	assert.NotContains(t, role.Permissions(), permission1)
+	assert.False(t, role.HasPermission(permissionUUID))
+	assert.Len(t, role.Permissions(), 2)
+}
+
+func TestRemovePermissionWithError(t *testing.T) {
+	testCases := []unitary.TestDependence[permission.Permission]{
+		// Arrange
+		{
+			Description: "the permission not available in role",
+			Dependency:  *permission4,
+		},
+		{
+			Description: "the permission is empty filled",
+			Dependency:  permission.Permission{},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			// Arrange
+			permissionUUID := test.Dependency.UUID()
+			role := data
+
+			// Act
+			err := data.RemovePermission(permissionUUID)
+
+			// Assert
+			require.Error(t, err)
+			assert.ErrorIs(t, err, &validate.FieldError{})
+			assert.Len(t, role.Permissions(), 3)
+			assert.False(t, role.HasPermission(permissionUUID))
+		})
+	}
 }

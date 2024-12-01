@@ -1,51 +1,52 @@
 package brand
 
 import (
-	"stock-controll/internal/domain/entity/common"
-	errorentity "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
-type statusBrand bool
+type StatusBrand bool
+
 const (
-	Active = true
+	Active   = true
 	Inactive = false
 )
 
 type Brand struct {
-	uuid string
+	uuid             string
 	name             string
 	description      string
 	logo             string
 	manufacturerUUID string
-	status           statusBrand
+	status           StatusBrand
 	// salesHistory []Sales
 }
 
-func NewBrand(name, description, logo, manufacturerUUID string) (*Brand, errorentity.IValidationError) {
-	var b = Brand{
-		uuid: common.GenerateUUID(),
+func New(name, description, logo, manufacturerUUID string) (*Brand, *validationerrors.ValidationError) {
+	var brandInstance = Brand{
+		uuid: uuid.New(),
 	}
 
-	var err = errorentity.
-		NewValidationError("Brand").
-		AddValidationError(b.SetName(name)).
-		AddValidationError(b.SetDescription(description)).
-		AddValidationError(b.SetLogo(logo)).
-		AddValidationError(b.SetManufacturerUUID(manufacturerUUID))
+	var err = validationerrors.
+		New("Brand").
+		AddValidationError(brandInstance.SetName(name)).
+		AddValidationError(brandInstance.SetDescription(description)).
+		AddValidationError(brandInstance.SetLogo(logo)).
+		AddValidationError(brandInstance.SetManufacturerUUID(manufacturerUUID))
 
 	if err.HasError() {
 		return nil, err
 	}
 
-	return &b, nil
+	return &brandInstance, nil
 }
 
-func (b *Brand) GetUUID() string {
+func (b *Brand) UUID() string {
 	return b.uuid
 }
 
-func (b *Brand) GetName() string {
+func (b *Brand) Name() string {
 	return b.name
 }
 
@@ -54,10 +55,10 @@ const (
 	maxNameLengthForBrand = 30
 )
 
-func (b *Brand) SetName(name string) *validation.FieldError {
-	var err = validation.Validate[string]("name", name,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minNameLengthForBrand, maxNameLengthForBrand, validation.ErrUnknown),
+func (b *Brand) SetName(name string) error {
+	var err = validate.New[string]("name", name,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minNameLengthForBrand, maxNameLengthForBrand),
 	)
 
 	if err == nil {
@@ -66,7 +67,7 @@ func (b *Brand) SetName(name string) *validation.FieldError {
 	return err
 }
 
-func (b *Brand) GetDescription() string {
+func (b *Brand) Description() string {
 	return b.description
 }
 
@@ -75,10 +76,10 @@ const (
 	maxDescriptionLength = 250
 )
 
-func (b *Brand) SetDescription(description string) *validation.FieldError {
-	var err = validation.Validate[string]("description", description,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minDescriptionLength, maxDescriptionLength, validation.ErrUnknown),
+func (b *Brand) SetDescription(description string) error {
+	var err = validate.New[string]("description", description,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minDescriptionLength, maxDescriptionLength),
 	)
 
 	if err == nil {
@@ -87,37 +88,33 @@ func (b *Brand) SetDescription(description string) *validation.FieldError {
 	return err
 }
 
-func (b *Brand) GetLogo() string {
+func (b *Brand) Logo() string {
 	return b.logo
 }
 
-func (b *Brand) SetLogo(logo string) *validation.FieldError {
-	// Quais validaçõe spor aqui???
-	// Verificar se é uma URL ou um caminho de arquivo... implementação futura...
+// TODO: Logo deve ser um svg
+// TODO: implementar teste de consistência
+func (b *Brand) SetLogo(logo string) error {
 	b.logo = logo
 	return nil
 }
 
-func (b *Brand) GetStatus() bool {
+func (b *Brand) Status() bool {
 	return bool(b.status)
 }
 
-func (b *Brand) SetStatus(status statusBrand) {
+func (b *Brand) SetStatus(status StatusBrand) {
 	b.status = status
 }
 
-func (b *Brand) GetManufacturerUUID() string {
+func (b *Brand) ManufacturerUUID() string {
 	return b.manufacturerUUID
 }
 
-func (b *Brand) SetManufacturerUUID(uuid string) *validation.FieldError {
-	var isValid = common.IsValidUUUID(uuid)
-
-	if isValid {
-		b.manufacturerUUID = uuid
+func (b *Brand) SetManufacturerUUID(manufacturerUUID string) error {
+	err := uuid.IsValid("manufacturer_uuid", manufacturerUUID)
+	if err == nil {
+		b.manufacturerUUID = manufacturerUUID
 	}
-	return &validation.FieldError{
-	FieldName: "manufacturer_uuid",
-	CodeErrors: []string{string(validation.ErrUnknown)},
-	}
+	return err
 }

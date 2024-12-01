@@ -1,6 +1,7 @@
 package credential
 
 import (
+	validationerrors "stock-controll/internal/domain/services/error"
 	"stock-controll/test/unitary"
 	"testing"
 	"time"
@@ -19,29 +20,29 @@ var person = credentialData{
 	userUUID: "01928cee-b413-72f3-ad15-a3a297f0a114",
 }
 
-func Test_NewCredential_Password_NoError(t *testing.T) {
+func TestNewCredentialPasswordNoError(t *testing.T) {
 	// Arrange
 	var testCases = []unitary.TestField[credentialData]{
 		{
-			TestDescription: "Password with minimun characters valids",
-			Handler:         func(cd credentialData) { cd.password = "AbCd24@$A&56dv" },
+			Description: "Password with minimun characters valids",
+			Handler:         func(cd *credentialData) { cd.password = "AbCd24@$A&56dv" },
 		},
 		{
-			TestDescription: "Password with maximun characters valids",
-			Handler:         func(cd credentialData) { cd.password = "Abcd$%@$AbCd24@$A65d24@$" },
+			Description: "Password with maximun characters valids",
+			Handler:         func(cd *credentialData) { cd.password = "Abcd$%@$AbCd24@$A65d24@$" },
 		},
 	}
 
-	for _, tt := range testCases {
-		t.Run(tt.TestDescription, func(t *testing.T) {
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
 			var data = person
-			tt.Handler(data)
+			test.Handler(&data)
 
 			// Act
 			credential, err := NewCredential(data.userUUID, data.password)
 
 			// Arrange
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			require.NotNil(t, credential)
 			assert.Equal(t, person.userUUID, credential.GetUUID())
 			assert.LessOrEqual(t, credential.GetCreatedAt(), time.Now())
@@ -56,57 +57,58 @@ func Test_NewCredential_Password_NoError(t *testing.T) {
 	}
 }
 
-func Test_NewCredential_Password_WithError(t *testing.T) {
+func TestNewCredentialPasswordWithError(t *testing.T) {
 	var testCases = []unitary.TestField[credentialData]{
 		{
-			TestDescription: "the password is empyt",
-			Handler:         func(cd credentialData) { cd.password = "" },
+			Description: "the password is empyt",
+			Handler:         func(cd *credentialData) { cd.password = "" },
 		},
 		{
-			TestDescription: "the password length is equals to min length for valid password, howerer all chars are empty characters",
-			Handler:         func(cd credentialData) { cd.password = "        " },
+			Description: "the password length is equals to min length for valid password, howerer all chars are empty characters",
+			Handler:         func(cd *credentialData) { cd.password = "        " },
 		},
 		{
-			TestDescription: "the password contains 1 digit less than the minimum acceptable",
-			Handler:         func(cd credentialData) { cd.password = "Ha$1a7#" },
+			Description: "the password contains 1 digit less than the minimum acceptable",
+			Handler:         func(cd *credentialData) { cd.password = "Ha$1a7#" },
 		},
 		{
-			TestDescription: "the password is invalid because it does not contains letters",
-			Handler:         func(cd credentialData) { cd.password = "123@#$123" },
+			Description: "the password is invalid because it does not contains letesters",
+			Handler:         func(cd *credentialData) { cd.password = "123@#$123" },
 		},
 		{
-			TestDescription: "the password is invalid for not contains lower cases letters",
-			Handler:         func(cd credentialData) { cd.password = "ABC123@#$JK1" },
+			Description: "the password is invalid for not contains lower cases letesters",
+			Handler:         func(cd *credentialData) { cd.password = "ABC123@#$JK1" },
 		},
 		{
-			TestDescription: "The password is invalid for not contains upper cases",
-			Handler:         func(cd credentialData) { cd.password = "halo123%$baca" },
+			Description: "The password is invalid for not contains upper cases",
+			Handler:         func(cd *credentialData) { cd.password = "halo123%$baca" },
 		},
 		{
-			TestDescription: "the Password is invalid for not contains numbers",
-			Handler:         func(cd credentialData) { cd.password = "PaloAlto@#$" },
+			Description: "the Password is invalid for not contains numbers",
+			Handler:         func(cd *credentialData) { cd.password = "PaloAlto@#$" },
 		},
 		{
-			TestDescription: "the password is invalid for not contains special characters",
-			Handler:         func(cd credentialData) { cd.password = "PaloAlto123" },
+			Description: "the password is invalid for not contains special characters",
+			Handler:         func(cd *credentialData) { cd.password = "PaloAlto123" },
 		},
 		{
-			TestDescription: "the password contains 1 digit more than the minimum acceptable",
-			Handler:         func(cd credentialData) { cd.password = "Abcd$%@$AbCd24@$A65d24@$cf$12" },
+			Description: "the password contains 1 digit more than the minimum acceptable",
+			Handler:         func(cd *credentialData) { cd.password = "Abcd$%@$AbCd24@$A65d24@$cf$12" },
 		},
 	}
 
-	for _, tt := range testCases {
-		t.Run(tt.TestDescription, func(t *testing.T) {
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
 			var data = person
-			tt.Handler(data)
+			test.Handler(&data)
 
 			// Act
 			credential, err := NewCredential(data.userUUID, data.password)
 
 			// Assert
 			assert.Nil(t, credential)
-			assert.NotNil(t, err)
+			require.Error(t, err)
+			assert.ErrorAs(t, &validationerrors.ValidationError{}, err)
 		})
 	}
 }

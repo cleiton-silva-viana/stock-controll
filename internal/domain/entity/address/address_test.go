@@ -4,13 +4,175 @@ import (
 	"strings"
 	"testing"
 
+	"stock-controll/internal/domain/services/uuid"
+	
 	"stock-controll/test/unitary"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var addressData = address{
+var config = Config{
+	Street:     unitary.Fake.Address().StreetName(),
+	City:       unitary.Fake.Address().City(),
+	State:      unitary.Fake.Address().State(),
+	Complement: "apto",
+	PostalCode: "21000-220",
+	Number:     unitary.Fake.Address().Faker.Currency().Number(),
+}
+
+func TestNewAddressNoError(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	testCases := []unitary.TestField[Config]{
+		{
+			Description: "street name length with compoust name",
+			Handler:     func(c *Config) { c.Street = "rua ibiapuera" },
+		},
+		{
+			Description: "street name length is equal than minimum allowed",
+			Handler:     func(c *Config) { c.Street = strings.Repeat("a", minStreetNameLength) },
+		},
+		{
+			Description: "street name length is equal than maximum allowed",
+			Handler:     func(c *Config) { c.Street = strings.Repeat("b", maxStreetNameLength) },
+		},
+		{
+			Description: "city name length with compoust name",
+			Handler:     func(c *Config) { c.City = "rio de janeiro" },
+		},
+		{
+			Description: "city name length is equal than minimum allowed",
+			Handler:     func(c *Config) { c.City = strings.Repeat("a", minCityNameLength) },
+		},
+		{
+			Description: "city name length is equal than maximum allowed",
+			Handler:     func(c *Config) { c.City = strings.Repeat("a", maxCityNameLength) },
+		},
+		{
+			Description: "state name length with compoust name",
+			Handler:     func(c *Config) { c.State = "Rio de Janeiro" },
+		},
+		{
+			Description: "state name length is equal than minimum allowed",
+			Handler:     func(c *Config) { c.State = strings.Repeat("a", minStateNameLength) },
+		},
+		{
+			Description: "state name length is equal than maximum allowed",
+			Handler:     func(c *Config) { c.State = strings.Repeat("a", maxStateNameLength) },
+		},
+		{
+			Description: "number name length is equal than minimum allowed",
+			Handler:     func(c *Config) { c.Number = minNumberHome },
+		},
+		{
+			Description: "number name length is equal than maximum allowed",
+			Handler:     func(c *Config) { c.Number = maxNumberHome },
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			copy := config
+			test.Handler(&copy)
+
+			// Act
+			addressInstance, err := New(copy)
+
+			// Assert
+			assert.Nil(t, err)
+			require.NotNil(t, addressInstance)
+			assert.Equal(t, copy.Street, addressInstance.Street())
+			assert.Equal(t, copy.City, addressInstance.City())
+			assert.Equal(t, copy.State, addressInstance.State())
+			assert.Equal(t, copy.Complement, addressInstance.Complement())
+			assert.Equal(t, copy.PostalCode, addressInstance.PostalCode())
+			assert.Equal(t, copy.Number, addressInstance.Number())
+		})
+	}
+}
+
+func TestNewAddressWithError(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	testCases := []unitary.TestField[Config]{
+		{
+			Description: "street name length is short than allowed",
+			Handler:     func(c *Config) { c.Street = strings.Repeat("a", minStreetNameLength-1) },
+		},
+		{
+			Description: "street name length is greater than allowed",
+			Handler:     func(c *Config) { c.Street = strings.Repeat("b", maxStreetNameLength+1) },
+		},
+		{
+			Description: "street name contain special characters",
+			Handler:     func(c *Config) { c.Street = "dom pedro 2º" },
+		},
+		{
+			Description: "city name length is short than allowed",
+			Handler:     func(c *Config) { c.City = strings.Repeat("a", minCityNameLength-1) },
+		},
+		{
+			Description: "city name length is greater than allowed",
+			Handler:     func(c *Config) { c.City = strings.Repeat("b", maxCityNameLength+1) },
+		},
+		{
+			Description: "city name contain special characters",
+			Handler:     func(c *Config) { c.City = "S@o Paulo" },
+		},
+		{
+			Description: "city name contain number",
+			Handler:     func(c *Config) { c.City = "R1o Grande do Sul" },
+		},
+		{
+			Description: "state name length is short than allowed",
+			Handler:     func(c *Config) { c.State = strings.Repeat("a", minStateNameLength-1) },
+		},
+		{
+			Description: "state name length is greater than allowed",
+			Handler:     func(c *Config) { c.State = strings.Repeat("b", maxStateNameLength+1) },
+		},
+		{
+			Description: "state name contain special characters",
+			Handler:     func(c *Config) { c.State = "S@o Paulo" },
+		},
+		{
+			Description: "state name contain number",
+			Handler:     func(c *Config) { c.State = "R1o Grande do Sul" },
+		},
+		{
+			Description: "postal code with invalid format",
+			Handler:     func(c *Config) { c.PostalCode = "215300.300" },
+		},
+		{
+			Description: "home number is short than allowed",
+			Handler:     func(c *Config) { c.State = strings.Repeat("a", minNumberHome-1) },
+		},
+		{
+			Description: "home number is greater than allowed",
+			Handler:     func(c *Config) { c.State = strings.Repeat("b", maxNumberHome+1) },
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			copy := config
+			test.Handler(&copy)
+
+			// Act
+			addressInstance, err := New(copy)
+
+			// Assert
+			assert.Nil(t, addressInstance)
+			assert.NotNil(t, err)
+		})
+	}
+}
+
+var addressInstance = Address{
+	uuid:       uuid.New(),
 	street:     unitary.Fake.Address().StreetName(),
 	city:       unitary.Fake.Address().City(),
 	state:      unitary.Fake.Address().State(),
@@ -19,162 +181,60 @@ var addressData = address{
 	number:     unitary.Fake.Address().Faker.Currency().Number(),
 }
 
-func Test_NewAddress_NoError(t *testing.T) {
-	t.Parallel()
+func TestStateConsistencyAfterInvalidSet(t *testing.T) {
+	copy := addressInstance
 
 	// Arrange
-	testCases := []unitary.TestField[address]{
+	testCases := []unitary.Consistence{
 		{
-			TestDescription: "street name length with compoust name",
-			Handler:         func(a address) { a.street = "rua ibiapuera" },
+			T:            t,
+			Description:  "test consistence of street name",
+			Getter:       func() interface{} { return copy.street },
+			Setter:       func(value interface{}) error { return copy.SetStreet(value.(string)) },
+			InvalidValue: "Street Z$r0",
 		},
 		{
-			TestDescription: "street name length is equal than minimum allowed",
-			Handler:         func(a address) { a.street = strings.Repeat("a", minStreetNameLength) },
+			T:            t,
+			Description:  "test consistence of home number",
+			Getter:       func() interface{} { return copy.City },
+			Setter:       func(value interface{}) error { return copy.SetNumber(value.(int)) },
+			InvalidValue: -1,
 		},
 		{
-			TestDescription: "street name length is equal than maximum allowed",
-			Handler:         func(a address) { a.street = strings.Repeat("b", maxStreetNameLength) },
+			T:            t,
+			Description:  "test consistence of complement",
+			Getter:       func() interface{} { return copy.City },
+			Setter:       func(value interface{}) error { return copy.SetComplement(value.(string)) },
+			InvalidValue: strings.Repeat("a", maxComplementLength+1),
 		},
 		{
-			TestDescription: "city name length with compoust name",
-			Handler:         func(a address) { a.city = "rio de janeiro" },
+			T:            t,
+			Description:  "test consistence of city name",
+			Getter:       func() interface{} { return copy.City },
+			Setter:       func(value interface{}) error { return copy.SetCity(value.(string)) },
+			InvalidValue: "#%¨#$5",
 		},
 		{
-			TestDescription: "city name length is equal than minimum allowed",
-			Handler:         func(a address) { a.city = strings.Repeat("a", minCityNameLength) },
+			T:            t,
+			Description:  "test consistence of state",
+			Getter:       func() interface{} { return copy.City },
+			Setter:       func(value interface{}) error { return copy.SetCity(value.(string)) },
+			InvalidValue: "_______",
 		},
 		{
-			TestDescription: "city name length is equal than maximum allowed",
-			Handler:         func(a address) { a.city = strings.Repeat("a", maxCityNameLength) },
-		},
-		{
-			TestDescription: "state name length with compoust name",
-			Handler:         func(a address) { a.state = "Rio de Janeiro" },
-		},
-		{
-			TestDescription: "state name length is equal than minimum allowed",
-			Handler:         func(a address) { a.state = strings.Repeat("a", minStateNameLength) },
-		},
-		{
-			TestDescription: "state name length is equal than maximum allowed",
-			Handler:         func(a address) { a.state = strings.Repeat("a", maxStateNameLength) },
-		},
-		{
-			TestDescription: "number name length is equal than minimum allowed",
-			Handler:         func(a address) { a.number = minNumberHome },
-		},
-		{
-			TestDescription: "number name length is equal than maximum allowed",
-			Handler:         func(a address) { a.number = maxNumberHome },
+			T:            t,
+			Description:  "test consistence of postal code",
+			Getter:       func() interface{} { return copy.City },
+			Setter:       func(value interface{}) error { return copy.SetCity(value.(string)) },
+			InvalidValue: "21550-300",
 		},
 	}
 
-	for _, tt := range testCases {
-		t.Run(tt.TestDescription, func(t *testing.T) {
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
 
-			// Act
-			addressInstance, err := NewAddress(
-				addressData.street,
-				addressData.city,
-				addressData.state,
-				addressData.postalCode,
-				addressData.complement,
-				addressData.number)
-
-			// Assert
-			assert.Nil(t, err)
-			require.NotNil(t, addressInstance)
-			assert.Equal(t, addressData.street, addressInstance.GetStreet())
-			assert.Equal(t, addressData.city, addressInstance.GetCity())
-			assert.Equal(t, addressData.state, addressInstance.GetState())
-			assert.Equal(t, addressData.complement, addressInstance.GetComplement())
-			assert.Equal(t, addressData.postalCode, addressInstance.GetPostalCode())
-			assert.Equal(t, addressData.number, addressInstance.GetNumber())
-		})
-	}
-}
-
-func Test_NewAddress_WithError(t *testing.T) {
-	t.Parallel()
-
-	// Arrange
-	testCases := []unitary.TestField[address]{
-		{
-			TestDescription: "street name length is short than allowed",
-			Handler:         func(a address) { a.street = strings.Repeat("a", minStreetNameLength-1) },
-		},
-		{
-			TestDescription: "street name length is greater than allowed",
-			Handler:         func(a address) { a.street = strings.Repeat("b", maxStreetNameLength+1) },
-		},
-		{
-			TestDescription: "street name contain special characters",
-			Handler:         func(a address) { a.street = "dom pedro 2º" },
-		},
-		{
-			TestDescription: "city name length is short than allowed",
-			Handler:         func(a address) { a.city = strings.Repeat("a", minCityNameLength-1) },
-		},
-		{
-			TestDescription: "city name length is greater than allowed",
-			Handler:         func(a address) { a.city = strings.Repeat("b", maxCityNameLength+1) },
-		},
-		{
-			TestDescription: "city name contain special characters",
-			Handler:         func(a address) { a.city = "S@o Paulo" },
-		},
-		{
-			TestDescription: "city name contain number",
-			Handler:         func(a address) { a.city = "R1o Grande do Sul" },
-		},
-		{
-			TestDescription: "state name length is short than allowed",
-			Handler:         func(a address) { a.state = strings.Repeat("a", minStateNameLength-1) },
-		},
-		{
-			TestDescription: "state name length is greater than allowed",
-			Handler:         func(a address) { a.state = strings.Repeat("b", maxStateNameLength+1) },
-		},
-		{
-			TestDescription: "state name contain special characters",
-			Handler:         func(a address) { a.state = "S@o Paulo" },
-		},
-		{
-			TestDescription: "state name contain number",
-			Handler:         func(a address) { a.state = "R1o Grande do Sul" },
-		},
-		{
-			TestDescription: "postal code with invalid format",
-			Handler:         func(a address) { a.postalCode = "215300.300" },
-		},
-		{
-			TestDescription: "home number is short than allowed",
-			Handler:         func(a address) { a.state = strings.Repeat("a", minNumberHome-1) },
-		},
-		{
-			TestDescription: "home number is greater than allowed",
-			Handler:         func(a address) { a.state = strings.Repeat("b", maxNumberHome+1) },
-		},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.TestDescription, func(t *testing.T) {
-			var address = addressData
-			tt.Handler(address)
-
-			// Act
-			addressInstance, err := NewAddress(
-				address.street,
-				address.city,
-				address.state,
-				address.postalCode,
-				address.complement,
-				address.number)
-
-			// Assert
-			assert.Nil(t, addressInstance)
-			assert.NotNil(t, err)
+			// Act & Assert
+			unitary.ConsistenceTest(test)
 		})
 	}
 }

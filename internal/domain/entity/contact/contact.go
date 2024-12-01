@@ -2,87 +2,88 @@ package contact
 
 import (
 	"regexp"
-	"stock-controll/internal/domain/entity/common"
-	validationError "stock-controll/internal/domain/entity/error"
-	"stock-controll/internal/domain/validation"
+
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
 type IContact interface {
-	GetEmail() string
-	GetPhone() string
-	SetEmail(email string) *validation.FieldError
-	SetPhone(phone string) *validation.FieldError
-	GetUUID() string
+	UUID() string
+	Email() string
+	SetEmail(email string) error
+	Phone() string
+	SetPhone(phone string) error
 }
 
-type contact struct {
-	uuid string
+type Contact struct {
+	uuid  string
 	phone string
 	email string
 }
 
-func NewContact(email, phone string) (IContact, validationError.IValidationError) {
-	var err = validationError.NewValidationError("contact")
-	var c = contact{
-		uuid: common.GenerateUUID(),
+func New(email, phone string) (IContact, error) {
+	var contactInstance = Contact{
+		uuid: uuid.New(),
 	}
 
-	err.
-		AddValidationError(c.SetEmail(email)).
-		AddValidationError(c.SetPhone(phone))
+	var err = validationerrors.New("contact").
+		AddValidationError(contactInstance.SetEmail(email)).
+		AddValidationError(contactInstance.SetPhone(phone))
 
 	if err.HasError() {
 		return nil, err
 	}
 
-	return &c, nil
+	return &contactInstance, nil
 }
 
-func (c *contact) GetUUID() string {
+func (c *Contact) UUID() string {
 	return c.uuid
 }
 
-func (c *contact) GetEmail() string {
+func (c *Contact) Email() string {
 	return c.email
 }
 
 const (
-	emailMinLength = 12
-	emailMaxLength = 255
+	emailMinLength          = 12
+	emailMaxLength          = 255
+	ErrCPFWithInvalidFormat = "ERR_CPF_WITH_INVALID_FORMAT"
 )
 
-func (c *contact) SetEmail(email string) *validation.FieldError {
+func (c *Contact) SetEmail(email string) error {
 	const re = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 
-	var err = validation.Validate("email", email,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(emailMinLength, emailMaxLength, validation.ErrUnknown),
-		validation.IsFormatValid(regexp.MustCompile(re), validation.ErrUnknown),
+	var err = validate.New("email", email,
+		validate.IsBlank(),
+		validate.IsLengthInRange(emailMinLength, emailMaxLength),
+		validate.IsFormatValid(regexp.MustCompile(re), ErrCPFWithInvalidFormat),
 	)
-
 	if err == nil {
 		c.email = email
 	}
 	return err
 }
 
-func (c *contact) GetPhone() string {
+func (c *Contact) Phone() string {
 	return c.phone
 }
 
 const (
-	PhoneMinLength = 13
-	PhoneMaxLength = 14
+	PhoneMinLength            = 13
+	PhoneMaxLength            = 14
+	ErrPhoneWithInvalidFormat = "ERR_PHONE_WITH_INVALID_FORMAT"
 )
 
-func (c *contact) SetPhone(phone string) *validation.FieldError {
+func (c *Contact) SetPhone(phone string) error {
 	const re = `^[.(](\d{2})[.)](\d{4,5})[.-](\d{4}$)`
 
-	var err = validation.Validate("phone", phone,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(PhoneMinLength, PhoneMaxLength, validation.ErrUnknown),
-		validation.CheckLetters(validation.Disallow, validation.ErrUnknown),
-		validation.IsFormatValid(regexp.MustCompile(re), validation.ErrUnknown),
+	var err = validate.New("phone", phone,
+		validate.IsBlank(),
+		validate.IsLengthInRange(PhoneMinLength, PhoneMaxLength),
+		validate.CheckLetters(validate.Disallow),
+		validate.IsFormatValid(regexp.MustCompile(re), ErrPhoneWithInvalidFormat),
 	)
 
 	if err == nil {

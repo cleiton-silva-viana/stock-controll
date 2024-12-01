@@ -1,8 +1,8 @@
 package permission
 
-// TODO: Checar o tipo de erro retornado
-
 import (
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/test/unitary"
 	"strings"
 	"testing"
 
@@ -10,138 +10,158 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_GetPermissionManager_NoError(t *testing.T) {
+var data = Permission{
+	uuid: "0192cfd8-9af2-79d7-9632-a8141ee5c7ad",
+	name: "delete",
+}
+
+func TestNewNoError(t *testing.T) {
+	// Arrange
+	testCases := []unitary.TestField[Permission]{
+		{
+			Description: "permission name is capitalized",
+			Handler:     func(p *Permission) { p.name = "UPDATE" },
+		},
+		{
+			Description: "permission name with min length allowed",
+			Handler:     func(p *Permission) { p.name = strings.Repeat("v", minNameLength) },
+		},
+		{
+			Description: "permission name with max length allowed",
+			Handler:     func(p *Permission) { p.name = strings.Repeat("a", maxNameLength) },
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			dataCopy := data
+			test.Handler(&dataCopy)
+
+			// Act
+			instance, err := New(dataCopy.name)
+
+			// Assert
+			assert.NoError(t, err)
+			require.NotNil(t, instance)
+			assert.Equal(t, strings.ToLower(dataCopy.name), instance.Name())
+		})
+	}
+}
+
+func TestNewWithError(t *testing.T) {
+	// Arrange
+	testCases := []unitary.TestField[Permission]{
+		{
+			Description: "name is empty",
+			Handler:     func(p *Permission) { p.name = "     " },
+		},
+		{
+			Description: "name contains special chars",
+			Handler:     func(p *Permission) { p.name = "DELET$" },
+		},
+		{
+			Description: "name contains number",
+			Handler:     func(p *Permission) { p.name = "add1ng" },
+		},
+		{
+			Description: "name is less than min allowed",
+			Handler:     func(p *Permission) { p.name = strings.Repeat("a", minNameLength-1) },
+		},
+		{
+			Description: "name is greater than max allowed",
+			Handler:     func(p *Permission) { p.name = strings.Repeat("b", maxNameLength+1) },
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			dataCopy := data
+			test.Handler(&dataCopy)
+
+			// Act
+			instance, err := New(dataCopy.name)
+
+			// Assert
+			assert.Nil(t, instance)
+			assert.Error(t, err)
+			assert.ErrorAs(t, err, &validationerrors.ValidationError{})
+		})
+	}
+}
+
+func TestSetNameConsistence(t *testing.T) {
+	// Arrange
+	const invalidName = "#$$$$$"
+	dataCopy := data
+
 	// Act
-	result := GetPermissionManager()
+	err := dataCopy.SetName(invalidName)
 
 	// Assert
-	require.NotNil(t, result)
+	assert.Error(t, err)
+	assert.Equal(t, dataCopy.Name(), data.Name())
+	assert.Equal(t, dataCopy.UUID(), data.UUID())
 }
 
 type permissionTest struct {
-	testDescription string
-	id              int
-	name            string
+	*Permission
+	expectedEqual bool
 }
 
-func Test_AddPermission_NoError(t *testing.T) {
-	t.Parallel()
+var initialTestData = permissionTest{
+	expectedEqual: false,
+	Permission:    &data,
+}
 
-	// Arrange
-	testsCases := []permissionTest{
+func TestEqual(t *testing.T) {
+	testCases := []unitary.TestField[permissionTest]{
 		{
-			testDescription: "name contains maximum caracters allowed",
-			id:              37,
-			name:            strings.Repeat("a", minNameLengthForPermission),
+			Description: "same permissions",
+			Handler: func(t *permissionTest) {
+				t.expectedEqual = true
+			},
 		},
 		{
-			testDescription: "name contains mimimum caracters allowed",
-			id:              38,
-			name:            strings.Repeat("b", maxNameLengthForPermission),
+			Description: "permissions with different uuids",
+			Handler: func(t *permissionTest) {
+				t.name = "0192cfe9-6a7b-70a1-9066-f8858f33b51b"
+				t.expectedEqual = false
+			},
 		},
 		{
-			testDescription: "name contains minimum number for id allowed",
-			id:              minIDNumberForPermission,
-			name:            "sell product",
+			Description: "permissions with different name",
+			Handler: func(t *permissionTest) {
+				t.name = "rollback"
+				t.expectedEqual = false
+			},
 		},
 		{
-			testDescription: "name contains maximum number fo id allowed",
-			id:              maxIDNumberForPermission,
-			name:            "buy product",
+			Description: "different name and uuid",
+			Handler: func(t *permissionTest) {
+				t.uuid = "0192cfe9-6a7b-70a1-9066-f8858f33b51b"
+				t.name = "rollback"
+				t.expectedEqual = false
+			},
+		},
+		{
+			Description: "nil comparison",
+			Handler: func(t *permissionTest) {
+				t.Permission = nil
+				t.expectedEqual = false
+			},
 		},
 	}
 
-	for _, tt := range testsCases {
-		t.Run(tt.testDescription, func(t *testing.T) {
-			var manager = GetPermissionManager()
+	for _, test := range testCases {
+		t.Run(test.Description, func(t *testing.T) {
+			dataCopy := initialTestData
+			test.Handler(&dataCopy)
 
 			// Act
-			err := manager.AddPermission(tt.id, tt.name)
+			result := data.Equals(dataCopy.Permission)
 
 			// Assert
-			assert.Nil(t, err)
-			require.NotEmpty(t, manager.permissions[tt.id])
-			assert.Equal(t, manager.permissions[tt.id].name, tt.name)
+			assert.Equal(t, dataCopy, result)
 		})
 	}
-}
-
-func Test_AddPermission_Error(t *testing.T) {
-	t.Parallel()
-
-	// Arrange
-	testsCases := []permissionTest{
-
-		{
-			testDescription: "name is empty",
-			id:              5,
-			name:            "", 
-		},
-		{
-			testDescription: "name contains special characters",
-			id:              6,
-			name:            "name@with#special$chars",
-		},
-		{
-			testDescription: "name is too short",
-			id:              3,
-			name:            strings.Repeat("a", minNameLengthForPermission - 1),
-		},
-		{
-			testDescription: "name is too long",
-			id:              4,
-			name:            strings.Repeat("c", maxNameLengthForPermission + 1),
-		},
-		{
-			testDescription: "id is negative",
-			id:              minIDNumberForPermission - 1,
-			name:            "valid name",
-		},
-		{
-			testDescription: "id is above the allowed limit",
-			id:              maxIDNumberForPermission + 1,
-			name:            "another valid name",
-		},
-	}
-	
-	for _, tt := range testsCases {
-		t.Run(tt.testDescription, func(t *testing.T) {
-			var manager = GetPermissionManager()
-
-			// Act
-			err := manager.AddPermission(tt.id, tt.name)
-
-			// Assert
-			assert.NotNil(t, err)
-			require.Empty(t, manager.permissions[tt.id])
-		})
-	}
-}
-
-var registerProduct, _ = NewPermission(1, "register product")
-
-func Test_GetPermissionByID_NoError(t *testing.T) {
-	// Arrange
-	var manager = GetPermissionManager()
-	manager.AddPermission(registerProduct.id, registerProduct.name)
-
-	// Act
-	permission, err := manager.GetPermissionByID(registerProduct.id)
-
-	// Assert
-	assert.Nil(t, err)
-	require.NotNil(t, permission)
-	assert.Equal(t, registerProduct.name, permission.name)
-}
-
-func Test_GetPermissionByID_WithError(t *testing.T) {
-	// Arrange
-	var manager = GetPermissionManager()
-
-	// act
-	permission, err := manager.GetPermissionByID(111)
-
-	// Assert
-	assert.Nil(t, permission)
-	require.NotNil(t, err)
 }

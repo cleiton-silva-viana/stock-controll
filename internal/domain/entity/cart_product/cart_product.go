@@ -1,12 +1,12 @@
-package cart
+package cartproduct
 
 import (
 	"stock-controll/internal/domain/entity/coupon"
-	"stock-controll/internal/domain/entity/discount"
-	validationerrors "stock-controll/internal/domain/entity/error"
 	"stock-controll/internal/domain/entity/product"
 	"stock-controll/internal/domain/entity/promotion"
-	"stock-controll/internal/domain/validation"
+	"stock-controll/internal/domain/services/discount"
+	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/validate"
 )
 
 /* {
@@ -21,9 +21,9 @@ import (
             "isApplied": true
         },
         "bulkDiscount": {
-            "type": "buy_X_Get_Y",
+            "type": "buy_X__Y",
             "buyQuantity": 2,
-            "getQuantity": 3,
+            "Quantity": 3,
             "discountValue": 10.99,
             "description": "Pague 3, leve 5",
             "isActive": true
@@ -67,12 +67,12 @@ type ProductCart struct {
 	TotalAmount
 }
 
-func NewProductCart(product product.IProduct) (*ProductCart, validationerrors.IValidationError) {
-	var productCartErrors = validationerrors.NewValidationError("product_cart")
+func New(product product.IProduct) (*ProductCart, error) {
+	var productCartErrors = validationerrors.New("product_cart")
 
 	productCartErrors.AddValidationError(
-		validation.Validate[any]("cart_product", product,
-			validation.IsNil(product, validation.ErrUnknown),
+		validate.New[any]("cart_product", product,
+			validate.IsNil(product),
 		),
 	)
 
@@ -86,13 +86,13 @@ func NewProductCart(product product.IProduct) (*ProductCart, validationerrors.IV
 		appliedCoupons:    make(map[string]coupon.ICoupon, 0),
 		appliedPromotions: make(map[string]promotion.IPromotion, 0),
 		TotalAmount: TotalAmount{
-			subtotal:        product.GetPrice(),
+			subtotal:        product.Price(),
 			DiscountSummary: discount.DiscountSummary{},
 		},
 	}, nil
 }
 
-func (pc *ProductCart) GetPurchasedQuantity() int {
+func (pc *ProductCart) PurchasedQuantity() int {
 	return pc.purchasedQuantity
 }
 
@@ -107,7 +107,7 @@ func (pc *ProductCart) SetPurchasedQuantity(newQuantity int) {
 	pc.Calculate()
 }
 
-func (pc *ProductCart) GetAppliedDiscount() []coupon.ICoupon {
+func (pc *ProductCart) AppliedDiscount() []coupon.ICoupon {
 	var coupons = make([]coupon.ICoupon, 0, len(pc.appliedCoupons))
 
 	for _, coupon := range pc.appliedCoupons {
@@ -117,18 +117,18 @@ func (pc *ProductCart) GetAppliedDiscount() []coupon.ICoupon {
 	return coupons
 }
 
-// Refatorar !!!
-func (pc *ProductCart) AddPromotion(promo promotion.IPromotion) *validation.FieldError {
+// TODO: Adicionar erro
+func (pc *ProductCart) AddPromotion(promo promotion.IPromotion) error {
 	if promo == nil {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			CodeError: "",
 		}
 	}
 
-	_, exists := pc.appliedPromotions[promo.GetUUID()]
+	_, exists := pc.appliedPromotions[promo.UUID()]
 	if exists {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			CodeError: "",
 		}
 	}
 
@@ -136,28 +136,28 @@ func (pc *ProductCart) AddPromotion(promo promotion.IPromotion) *validation.Fiel
 	//	 	finalizadas
 	//		canceladas
 	//		Inválidas para este produto
-	status := promo.GetStatus()
+	status := promo.Status()
 	if status != promotion.Scheduled && status != promotion.InProgress {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			CodeError: "",
 		}
 	}
 
 	return nil
 }
 
-func (pc *ProductCart) AddCoupon(coupon coupon.ICoupon) *validation.FieldError {
+func (pc *ProductCart) AddCoupon(coupon coupon.ICoupon) error {
 	if coupon == nil {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			CodeError: "",
 		}
 	}
 
 	// verificar se o cupon já está no map
-	_, exists := pc.appliedCoupons[coupon.GetUUID()]
+	_, exists := pc.appliedCoupons[coupon.UUID()]
 	if exists {
-		return &validation.FieldError{
-			CodeErrors: []string{string(validation.ErrUnknown)},
+		return &validate.FieldError{
+			CodeError: "",
 		}
 	}
 
@@ -167,7 +167,7 @@ func (pc *ProductCart) AddCoupon(coupon coupon.ICoupon) *validation.FieldError {
 	}
 
 	// adicionando o cupom ao map do produto que contém todos os cupons aplicados
-	pc.appliedCoupons[coupon.GetUUID()] = coupon
+	pc.appliedCoupons[coupon.UUID()] = coupon
 
 	// Recalcular os descontos
 	pc.Calculate()
@@ -181,16 +181,16 @@ func (pc *ProductCart) RemoveCoupon(couponUUID string) {
 	}
 }
 
-func (pc *ProductCart) GetSubtotal() float64 {
+func (pc *ProductCart) Subtotal() float64 {
 	return pc.subtotal
 }
 
-func (pc *ProductCart) GetTotalDiscountApplied() float64 {
-	return pc.DiscountSummary.GetTotalDiscountApplied()
+func (pc *ProductCart) TotalDiscountApplied() float64 {
+	return pc.DiscountSummary.TotalDiscountApplied()
 }
 
-func (pc *ProductCart) GetFinalTotal() float64 {
-	return pc.DiscountSummary.GetFinalTotal()
+func (pc *ProductCart) FinalTotal() float64 {
+	return pc.DiscountSummary.FinalTotal()
 }
 
 func (pc *ProductCart) Calculate() ProductCart {
@@ -211,7 +211,7 @@ func (pc *ProductCart) CalculateDiscount() {
 
 	   	var errorsToApplyDiscount = validationerrors.NewValidationError("cart_product")
 
-	   	pc.TotalAmount.subtotal = pc.GetPrice() * float64(pc.purchasedQuantity)
+	   	pc.TotalAmount.subtotal = pc.Price() * float64(pc.purchasedQuantity)
 	   	for _, discount := range pc.appliedDiscounts {
 	   		discountSummary, err := dis.Apply(pc.IProduct, pc.purchasedQuantity)
 	   		pc.DiscountSummary.Update(discountSummary)

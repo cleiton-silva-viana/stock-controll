@@ -1,52 +1,42 @@
 package role
 
 import (
-	validationError "stock-controll/internal/domain/entity/error"
+	"fmt"
 	"stock-controll/internal/domain/entity/permission"
-	"stock-controll/internal/domain/validation"
+	validationError "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
 )
 
 type Role struct {
-	id          int
+	uuid        string
 	name        string
-	permissions map[int]permission.Permission
+	permissions map[string]permission.Permission
 }
 
-func NewRole(id int, name string, permissions ...permission.Permission) (*Role, validationError.IValidationError) {
-	var roleError = validationError.NewValidationError("role")
-	var roleInstance = Role{}
-	roleInstance.permissions = make(map[int]permission.Permission)
+func New(name string) (*Role, error) {
+	var roleInstance = Role{
+		uuid:        uuid.New(),
+		name:        name,
+		permissions: make(map[string]permission.Permission),
+	}
 
-	roleError.
-		AddValidationError(roleInstance.SetID(id)).
-		AddValidationError(roleInstance.SetName(name)).
-		AddValidationError(roleInstance.SetPermissions(permissions...))
+	var roleError = validationError.New("role").
+		AddValidationError(roleInstance.SetName(name))
 
 	if roleError.HasError() {
 		return nil, roleError
 	}
+
+	roleInstance.uuid = uuid.New()
 	return &roleInstance, nil
 }
 
-func (r *Role) GetID() int {
-	return r.id
+func (r *Role) UUID() string {
+	return r.uuid
 }
 
-const (
-	minIDNumberForRole = 1
-	maxIDNumberForRole = 100
-)
-
-func (r *Role) SetID(id int) *validation.FieldError {
-	err := validation.Validate[int]("id", id,
-		validation.IsInRange(minIDNumberForRole, maxIDNumberForRole, validation.ErrUnknown))
-	if err == nil {
-		r.id = id
-	}
-	return err
-}
-
-func (r *Role) GetName() string {
+func (r *Role) Name() string {
 	return r.name
 }
 
@@ -55,12 +45,12 @@ const (
 	maxNameLengthForRole = 24
 )
 
-func (r *Role) SetName(name string) *validation.FieldError {
-	err := validation.Validate[string]("name", name,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(minNameLengthForRole, maxNameLengthForRole, validation.ErrUnknown),
-		validation.CheckNumbers(validation.Disallow, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
+func (r *Role) SetName(name string) error {
+	err := validate.New[string]("name", name,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minNameLengthForRole, maxNameLengthForRole),
+		validate.CheckNumbers(validate.Disallow),
+		validate.CheckSpecialChars(validate.Disallow),
 	)
 	if err == nil {
 		r.name = name
@@ -68,7 +58,7 @@ func (r *Role) SetName(name string) *validation.FieldError {
 	return err
 }
 
-func (r *Role) GetPermissions() []permission.Permission {
+func (r *Role) Permissions() []permission.Permission {
 	permissions := make([]permission.Permission, 0, len(r.permissions))
 	for _, p := range r.permissions {
 		permissions = append(permissions, p)
@@ -76,30 +66,40 @@ func (r *Role) GetPermissions() []permission.Permission {
 	return permissions
 }
 
-// ao invés de retornar um error, podemos retornar um error code ...
-func (r *Role) SetPermissions(permissions ...permission.Permission) *validation.FieldError {
-	for _, permission := range permissions {
-		if r.HasPermission(permission.GetID()) {
-			err := validation.FieldError{
-				FieldName: "permissions",
-				CodeErrors: []string{string(validation.ErrUnknown)},
-			}
-			return &err
+const ErrPermissionAlreadyAssignedToRole = "ERR_PERMISSION_ALREADY_ASSIGNED_TO_ROLE"
+
+func (r *Role) SetPermission(permission permission.Permission) error {
+	permissionUUID := permission.UUID()
+	exists := r.HasPermission(permissionUUID)
+	if exists {
+		return &validate.FieldError{
+			FieldName: "permissions",
+			CodeError: fmt.Sprint(ErrPermissionAlreadyAssignedToRole, permissionUUID),
 		}
-		r.permissions[permission.GetID()] = permission
 	}
+	r.permissions[permissionUUID] = permission
 	return nil
 }
 
-func (r *Role) GetPermissionByID(id int) permission.Permission {
-	return r.permissions[id]
+func (r *Role) PermissionByID(uuid string) permission.Permission {
+	return r.permissions[uuid]
 }
 
-func (r *Role) RemovePermission(PermissionID int) {
-	delete(r.permissions, PermissionID)
+const ErrPermissionNotAssociated = "ERR_PERMISSION_NOT_ASSOCIATED"
+
+func (r *Role) RemovePermission(permissionUUID string) error {
+	exists := r.HasPermission(permissionUUID)
+	if !exists {
+		return &validate.FieldError{
+			FieldName: "permissions",
+			CodeError: ErrPermissionNotAssociated,
+		}
+	}
+	delete(r.permissions, permissionUUID)
+	return nil
 }
 
-func (r *Role) HasPermission(id int) bool {
-	_, exits := r.permissions[id]
-	return exits
+func (r *Role) HasPermission(uuid string) bool {
+	_, exists := r.permissions[uuid]
+	return exists
 }

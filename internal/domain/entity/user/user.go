@@ -6,82 +6,76 @@ import (
 	"strings"
 	"time"
 
-	"stock-controll/internal/domain/entity/common"
-	validationError "stock-controll/internal/domain/entity/error"
 	"stock-controll/internal/domain/entity/permission"
+	"stock-controll/internal/domain/entity/position"
 	"stock-controll/internal/domain/entity/role"
-	"stock-controll/internal/domain/validation"
+	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/validate"
+	validationError "stock-controll/internal/domain/services/error"
 )
 
 type IUser interface {
-	GetUUID() string
-	GetFirstName() string
-	GetLastName() string
-	GetFullName() string
-	GetCPF() string
-	GetBirthDate() time.Time
-	GetGender() string
-	GetRole() role.Role
-	GetDesignation() string
+	UUID() string
+	FirstName() string
+	LastName() string
+	FullName() string
+	CPF() string
+	BirthDate() time.Time
+	Gender() string
+	Role() role.Role
+	Designation() string
 }
 
-// transformar em VO
-type designation string
-
-const (
-	Admin         designation = "admin"
-	Developer     designation = "developer"
-	Client        designation = "client"
-	Manager       designation = "manager"
-	Seller        designation = "seller"
-	Buyer         designation = "buyer"
-	Conference    designation = "conference"
-	HumanResource designation = "rh"
-)
-
-type user struct {
-	uuid        string
-	fullName    fullName
-	cpf         string
-	gender      string
-	birthDate   time.Time
-	role        role.Role
-	designation designation
-	active      bool
+type User struct {
+	uuid      string
+	fullName  FullName
+	cpf       string
+	gender    string
+	birthDate time.Time
+	role      role.Role
+	position  position.Position
+	active    bool
 }
 
-type fullName struct {
+type FullName struct {
 	firstName string
 	lastName  string
 }
 
-func (fn *fullName) GetFirstName() string {
+func (fn *FullName) FirstName() string {
 	return fn.firstName
 }
 
-func (fn *fullName) GetLastName() string {
+func (fn *FullName) LastName() string {
 	return fn.lastName
 }
 
-func (fn *fullName) GetFullName() string {
+func (fn *FullName) FullName() string {
 	return fmt.Sprintf("%s %s", fn.firstName, fn.lastName)
 }
 
+type UserConfig struct {
+	FirstName string
+	LastName  string
+	CPF       string
+	Gender    string
+	BirthDate time.Time
+}
+
 // Tornar construtor privado, haja visto que tal estrutura não deve ser instanciada diretamente
-func NewUser(firstName, lastName, cpf, gender string, birthDate time.Time) (*user, validationError.IValidationError) {
-	var userError = validationError.NewValidationError("user")
-	var userInstance = user{
-		uuid: common.GenerateUUID(),
+func New(config UserConfig) (*User, error) {
+	var userInstance = User{
+		uuid:   uuid.New(),
 		active: true,
 		// TODO: definir função default
 	}
 
-	userError.
-		AddValidationError(userInstance.SetFirstName(firstName)).
-		AddValidationError(userInstance.SetLastName(lastName)).
-		AddValidationError(userInstance.SetGender(gender)).
-		AddValidationError(userInstance.SetCPF(cpf)).
-		AddValidationError(userInstance.SetBirthDate(birthDate))
+	var userError = validationError.New("user").
+		AddValidationError(userInstance.SetFirstName(config.FirstName)).
+		AddValidationError(userInstance.SetLastName(config.LastName)).
+		AddValidationError(userInstance.SetGender(config.Gender)).
+		AddValidationError(userInstance.SetCPF(config.CPF)).
+		AddValidationError(userInstance.SetBirthDate(config.BirthDate))
 
 	if userError.HasError() {
 		return nil, userError
@@ -90,12 +84,12 @@ func NewUser(firstName, lastName, cpf, gender string, birthDate time.Time) (*use
 	return &userInstance, nil
 }
 
-func (u *user) GetUUID() string {
+func (u *User) UUID() string {
 	return u.uuid
 }
 
-func (u *user) GetFirstName() string {
-	return u.fullName.GetFirstName()
+func (u *User) FirstName() string {
+	return u.fullName.FirstName()
 }
 
 const (
@@ -103,12 +97,12 @@ const (
 	userNameMaxLength = 24
 )
 
-func (u *user) SetFirstName(name string) *validation.FieldError {
-	err := validation.Validate("first_name", name,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(userNameMinLength, userNameMaxLength, validation.ErrUnknown),
-		validation.CheckNumbers(validation.Disallow, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
+func (u *User) SetFirstName(name string) error {
+	err := validate.New("first_name", name,
+		validate.IsBlank(),
+		validate.IsLengthInRange(userNameMinLength, userNameMaxLength),
+		validate.CheckNumbers(validate.Disallow),
+		validate.CheckSpecialChars(validate.Disallow),
 	)
 	if err == nil {
 		u.fullName.firstName = strings.ToLower(name)
@@ -116,16 +110,16 @@ func (u *user) SetFirstName(name string) *validation.FieldError {
 	return err
 }
 
-func (u *user) GetLastName() string {
-	return u.fullName.GetLastName()
+func (u *User) LastName() string {
+	return u.fullName.LastName()
 }
 
-func (u *user) SetLastName(name string) *validation.FieldError {
-	err := validation.Validate("last_name", name,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthInRange(userNameMinLength, userNameMaxLength, validation.ErrUnknown),
-		validation.CheckNumbers(validation.Disallow, validation.ErrUnknown),
-		validation.CheckSpecialChars(validation.Disallow, validation.ErrUnknown),
+func (u *User) SetLastName(name string) error {
+	err := validate.New("last_name", name,
+		validate.IsBlank(),
+		validate.IsLengthInRange(userNameMinLength, userNameMaxLength),
+		validate.CheckNumbers(validate.Disallow),
+		validate.CheckSpecialChars(validate.Disallow),
 	)
 	if err == nil {
 		u.fullName.lastName = strings.ToLower(name)
@@ -133,20 +127,25 @@ func (u *user) SetLastName(name string) *validation.FieldError {
 	return err
 }
 
-func (u *user) GetFullName() string {
-	return u.fullName.GetFullName()
+func (u *User) FullName() string {
+	return u.fullName.FullName()
 }
 
-func (u *user) GetCPF() string {
+func (u *User) CPF() string {
 	return u.cpf
 }
 
-func (u *user) SetCPF(cpf string) *validation.FieldError {
+const (
+	cpfLength               = 14
+	ErrCPFWithInvalidFormat = "ERR_CPF_WITH_INVALID_FORMAR"
+)
+
+func (u *User) SetCPF(cpf string) error {
 	re := `^\d{3}\.\d{3}\.\d{3}\-\d{2}$`
-	err := validation.Validate[string]("cpf", cpf,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsLengthEqualTo(14, validation.ErrUnknown),
-		validation.IsFormatValid(regexp.MustCompile(re), validation.ErrUnknown),
+	err := validate.New[string]("cpf", cpf,
+		validate.IsBlank(),
+		validate.IsLengthEqualTo(cpfLength),
+		validate.IsFormatValid(regexp.MustCompile(re), ErrCPFWithInvalidFormat),
 	)
 	if err == nil {
 		u.cpf = cpf
@@ -154,20 +153,21 @@ func (u *user) SetCPF(cpf string) *validation.FieldError {
 	return err
 }
 
-func (u *user) GetBirthDate() time.Time {
+func (u *User) BirthDate() time.Time {
 	return u.birthDate
 }
 
 var (
-	userMinimumBirthDate = time.Now().AddDate(-18, 0, 0)
-	userMaximumBirthDate = time.Now().AddDate(-100, 0, 0)
+	userMinimumBirthDate   = time.Now().AddDate(-18, 0, 0)
+	userMaximumBirthDate   = time.Now().AddDate(-100, 0, 0)
+	ErrUserAgeExceedsLimit = "ERR_USER_AGE_EXCEEDS_LIMIT"
+	ErrUserageBelowLimit   = "ERR_USER_AGE_BELOW_LIMIT"
 )
 
-func (u *user) SetBirthDate(date time.Time) *validation.FieldError {
-	err := validation.Validate("birth_date", date,
-		validation.IsFutureDate(validation.ErrUnknown),
-		validation.IsBeforeThan(userMinimumBirthDate, validation.ErrUnknown),
-		validation.IsAfterThan(userMaximumBirthDate, validation.ErrUnknown),
+func (u *User) SetBirthDate(date time.Time) error {
+	err := validate.New("birth_date", date,
+		validate.IsBeforeThan(userMinimumBirthDate, ErrUserageBelowLimit),
+		validate.IsAfterThan(userMaximumBirthDate, ErrUserAgeExceedsLimit),
 	)
 	if err == nil {
 		u.birthDate = date
@@ -175,7 +175,7 @@ func (u *user) SetBirthDate(date time.Time) *validation.FieldError {
 	return err
 }
 
-func (u *user) GetGender() string {
+func (u *User) Gender() string {
 	return fmt.Sprint(u.gender)
 }
 
@@ -183,10 +183,10 @@ var (
 	genders = []string{"female", "male"}
 )
 
-func (u *user) SetGender(gender string) *validation.FieldError {
-	err := validation.Validate("gender", gender,
-		validation.IsBlank(validation.ErrUnknown),
-		validation.IsValueInRange(genders, true, validation.ErrUnknown),
+func (u *User) SetGender(gender string) error {
+	err := validate.New("gender", gender,
+		validate.IsBlank(),
+		validate.IsInEnum(genders),
 	)
 	if err == nil {
 		u.gender = strings.ToLower(gender)
@@ -194,67 +194,24 @@ func (u *user) SetGender(gender string) *validation.FieldError {
 	return err
 }
 
-func (u *user) GetRole() role.Role {
+func (u *User) Role() role.Role {
 	return u.role
 }
 
 // TODO: adicionar verificações
-func (u *user) SetRole(newRole role.Role) error {
-	u.role = newRole
+func (u *User) SetRole(role role.Role) error {
+	u.role = role
 	return nil
 }
 
-func (u *user) GetDesignation() string {
-	return string(u.designation)
+func (u *User) Position() string {
+	return u.position.Name()
 }
 
-// TODO: Adicionar verificações
-func (u *user) SetDesignation(designation string) error {
-	u.designation = u.designation
-	return nil
+func (u *User) Permissions() []permission.Permission {
+	return u.role.Permissions()
 }
 
-func (u *user) GetPermissions() []permission.Permission {
-	return u.role.GetPermissions()
-}
-
-func (u *user) SetPermission(newPermission permission.Permission) *validation.FieldError {
-	return u.role.SetPermissions(newPermission)
-}
-
-type UserBuilder struct {
-	firstName string
-	lastName  string
-	cpf       string
-	gender    string
-	birthDate time.Time
-}
-
-func NewUserBuilder() *UserBuilder {
-	return &UserBuilder{}
-}
-
-func (ub *UserBuilder) SetName(firstName, lastName string) *UserBuilder {
-	ub.firstName = firstName
-	ub.lastName = lastName
-	return ub
-}
-
-func (ub *UserBuilder) SetCPF(cpf string) *UserBuilder {
-	ub.cpf = cpf
-	return ub
-}
-
-func (ub *UserBuilder) SetGender(gender string) *UserBuilder {
-	ub.gender = gender
-	return ub
-}
-
-func (ub *UserBuilder) SetBirthDate(birthDate time.Time) *UserBuilder {
-	ub.birthDate = birthDate
-	return ub
-}
-
-func (ub *UserBuilder) Build() (IUser, validationError.IValidationError) {
-	return NewUser(ub.firstName, ub.lastName, ub.cpf, ub.gender, ub.birthDate)
+func (u *User) SetPermission(permission permission.Permission) error {
+	return u.role.SetPermission(permission)
 }
