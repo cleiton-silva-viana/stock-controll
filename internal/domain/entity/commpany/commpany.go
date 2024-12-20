@@ -6,8 +6,10 @@ import (
 
 	"stock-controll/internal/domain/entity/address"
 	"stock-controll/internal/domain/entity/contact"
-	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/services/error/field"
 	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
 type ICompany interface {
@@ -22,11 +24,11 @@ type ICompany interface {
 	PurchasePhone() string
 }
 
-type CompanyStatus string
+type Status string
 
 const (
-	Active   = "active"
-	Inactive = "inactive"
+	Active   Status = "active"
+	Inactive Status = "inactive"
 )
 
 type Config struct {
@@ -39,100 +41,71 @@ type Config struct {
 	Address         address.IAddress
 }
 type Company struct {
-	uuid            string
+	uuid            uuid.UUID
 	name            string
-	cnpj            string
+	cnpj            string // TODO: vai virar value object
 	billingContact  contact.IContact
 	purchaseContact contact.IContact
 	address         address.IAddress
-	status          CompanyStatus
+	status          Status
 }
 
+const prefix = "COM"
+
+// TODO: criar função específica para validações de contato
+// Devemos impedir que contato comercial seja o mesmo contato de cobrança?
 func New(config Config) (*Company, error) {
-	var instance Company
+	errors := entity.Error("company")
 
-	errs := validationerrors.New("company").
-		AddValidationError(instance.SetName(config.Name)).
-		AddValidationError(instance.SetCNPJ(config.CNPJ)).
-		AddValidationError(instance.SetStatus(config.Status)).
-		AddValidationError(instance.SetBillingContact(
-			config.BillingContact.Email(),
-			config.BillingContact.Phone())).
-		AddValidationError(instance.SetPurchaseContact(
-			config.PurchaseContact.Email(),
-			config.PurchaseContact.Phone(),
-		)).
-		AddValidationError(instance.SetAddress(config.Address))
+	nameErr := validateName(config.Name)
+	cnpjErr := validateCNPJ(config.CNPJ)
+	statusErr := validateStatus(config.Status)
+	id, idErr := uuid.New(prefix)
 
-	if errs.HasError() {
-		return nil, errs
+	errors.
+		AddValidationError(nameErr).
+		AddValidationError(cnpjErr).
+		AddValidationError(statusErr).
+		AddValidationError(idErr)
+
+	// validateBillingContact(
+	// 		config.BillingContact.Email(),
+	// 		config.BillingContact.Phone())).
+	// 	AddValidationError(instance.SetPurchaseContact(
+	// 		config.PurchaseContact.Email(),
+	// 		config.PurchaseContact.Phone(),
+	// 	)).
+	// 	AddValidationError(instance.SetAddress(config.Address))
+
+	if errors.HasError() {
+		return nil, errors
 	}
-	return &instance, nil
+	return &Company{
+		uuid: *id,
+		name: config.Name,
+		cnpj: config.CNPJ,
+	}, nil
 }
 
 func (c *Company) UUID() string {
-	return c.uuid
+	return c.uuid.String()
 }
 
 func (c *Company) Name() string {
 	return c.name
 }
 
-const (
-	companyNameMinLength = 3
-	companyNameMaxLength = 100
-)
-
-func (c *Company) SetName(name string) error {
-	err := validate.New("name", name,
-		validate.IsBlank(),
-		validate.IsLengthInRange(companyNameMinLength, companyNameMaxLength),
-	)
-	if err == nil {
-		c.name = name
-	}
-	return err
+func (c *Company) Address() address.IAddress {
+	return c.address
 }
 
 func (c *Company) CNPJ() string {
 	return c.cnpj
 }
 
-const CNPJLength = 18
-const ErrCNPJWithInvalidFormat = "ERR_CNPJ_WITH_INVALID_FORMAT"
-
-func (c *Company) SetCNPJ(cnpj string) error {
-	re := `^(\d{2})(?:\.(\d{3}))(?:\.(\d{3}))(?:\/(\d{4}))(?:\-(\d{2})$)`
-
-	err := validate.New("cnpj", cnpj,
-		validate.IsBlank(),
-		validate.IsLengthEqualTo(CNPJLength),
-		validate.IsFormatValid(regexp.MustCompile(re), ErrCNPJWithInvalidFormat),
-	)
-	if err == nil {
-		c.cnpj = cnpj
-	}
-	return err
-}
-
-const ErrInvalidCompanyStatus = "ERR_INVALID_COMPANY_STATUS"
-
-func (c *Company) SetStatus(newStatus string) error {
-	statusParsed := CompanyStatus(newStatus)
-	
-	if statusParsed == Active || statusParsed == Inactive {
-		c.status = statusParsed
-		return nil
-	}
-
-	return &validate.FieldError{
-		FieldName: "status",
-		CodeError: ErrInvalidCompanyStatus,
-	}
-}
-
 func (c *Company) BillingContact() string {
-	err := validate.New[any]("billing_contact", c.billingContact,
+	err := validate.New[any](
+		"billing_contact", c.billingContact,
 		validate.IsNil(c.billingContact),
 	)
 	if err.HasError() {
@@ -141,28 +114,12 @@ func (c *Company) BillingContact() string {
 	return fmt.Sprintf("Email: %s\nPhone: %s", c.billingContact, c.billingContact.Phone())
 }
 
-func (c *Company) SetBillingContact(email, phone string) error {
-	contact, err := contact.New(email, phone)
-	if err == nil {
-		c.billingContact = contact
-	}
-	return err
-}
-
 func (c *Company) BillingEmail() string {
 	return c.billingContact.Email()
 }
 
-func (c *Company) SetBillingEmail(email string) error {
-	return c.billingContact.SetEmail(email)
-}
-
 func (c *Company) BillingPhone() string {
 	return c.billingContact.Phone()
-}
-
-func (c *Company) SetBillingPhone(phone string) error {
-	return c.billingContact.SetPhone(phone)
 }
 
 func (c *Company) PurchaseContact() string {
@@ -172,7 +129,78 @@ func (c *Company) PurchaseContact() string {
 	return fmt.Sprintf("Email: %s\nPhone: %s", c.purchaseContact.Email(), c.purchaseContact.Phone())
 }
 
-func (c *Company) SetPurchaseContact(email, phone string) error {
+func (c *Company) PurchaseEmail() string {
+	return c.purchaseContact.Email()
+}
+
+func (c *Company) PurchasePhone() string {
+	return c.purchaseContact.Phone()
+}
+
+const (
+	companyNameMinLength = 3
+	companyNameMaxLength = 100
+)
+
+func validateName(name string) error {
+	return validate.New(
+		"name", name,
+		validate.IsBlank(),
+		validate.IsLengthInRange(companyNameMinLength, companyNameMaxLength),
+	)
+}
+
+const CNPJLength = 18
+const ErrCNPJWithInvalidFormat = "ERR_CNPJ_WITH_INVALID_FORMAT"
+
+func validateCNPJ(cnpj string) error {
+	re := `^(\d{2})(?:\.(\d{3}))(?:\.(\d{3}))(?:\/(\d{4}))(?:\-(\d{2})$)`
+
+	return validate.New(
+		"cnpj", cnpj,
+		validate.IsBlank(),
+		validate.IsLengthEqualTo(CNPJLength),
+		validate.IsFormatValid(regexp.MustCompile(re), ErrCNPJWithInvalidFormat),
+	)
+}
+
+const ErrInvalidCompanyStatus = "ERR_INVALID_COMPANY_STATUS"
+
+// TODO: verificar
+func validateStatus(newStatus string) error {
+	statusParsed := CompanyStatus(newStatus)
+
+	if statusParsed == Active || statusParsed == Inactive {
+		c.status = statusParsed
+		return nil
+	}
+
+	return &field.FieldError{
+		FieldName: "status",
+		CodeError: ErrInvalidCompanyStatus,
+	}
+}
+
+// TODO: verificar
+func validateBillingContact(email, phone string) error {
+	contact, err := contact.New(email, phone)
+	if err == nil {
+		c.billingContact = contact
+	}
+	return err
+}
+
+// TODO: verificar
+func validateBillingEmail(email string) error {
+	return c.billingContact.SetEmail(email)
+}
+
+// TODO: verificar
+func validateBillingPhone(phone string) error {
+	return c.billingContact.SetPhone(phone)
+}
+
+func validatePurchaseContact(email, phone string) error {
 	contact, err := contact.New(email, phone)
 	if err == nil {
 		c.purchaseContact = contact
@@ -180,32 +208,17 @@ func (c *Company) SetPurchaseContact(email, phone string) error {
 	return err
 }
 
-func (c *Company) PurchaseEmail() string {
-	return c.purchaseContact.Email()
-}
-
-func (c *Company) SetPurchaseEmail(email string) error {
+func validatePurchaseEmail(email string) error {
 	return c.purchaseContact.SetEmail(email)
 }
 
-func (c *Company) PurchasePhone() string {
-	return c.purchaseContact.Phone()
+func validatePurchasePhone(phone string) error {
+	return purchaseContact.SetPhone(phone)
 }
 
-func (c *Company) SetPurchasePhone(phone string) error {
-	return c.purchaseContact.SetPhone(phone)
-}
-
-func (c *Company) Address() address.IAddress {
-	return c.address
-}
-
-func (c *Company) SetAddress(newAddress address.IAddress) error {
-	err := validate.New[any]("address", newAddress,
+func validateAddress(newAddress address.IAddress) error {
+	return validate.New[any](
+		"address", newAddress,
 		validate.IsNil(newAddress),
 	)
-	if err == nil {
-		c.address = newAddress
-	}
-	return err
 }

@@ -3,8 +3,9 @@ package sale
 import (
 	"testing"
 
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/valueobject/uuid"
+	
 	"stock-controll/test/unitary"
 
 	"github.com/stretchr/testify/assert"
@@ -12,8 +13,8 @@ import (
 )
 
 var data = Config{
-	SellerUUID:    uuid.New(),
-	ClientUUID:    uuid.New(),
+	SellerUUID:    uuid.New().String(),
+	ClientUUID:    uuid.New().String(),
 	Discount:      Discount{}, // testar
 	Products:      nil,
 	PaymentMethod: Cash, // testar
@@ -45,15 +46,15 @@ func TestNewWithError(t *testing.T) {
 	testCases := []unitary.TestField[Config]{
 		{
 			Description: "seller uuid is invalid",
-			Handler: func(c *Config) { c.SellerUUID = "" },
+			Handler:     func(c *Config) { c.SellerUUID = "" },
 		},
 		{
 			Description: "client uuid is invalid",
-			Handler: func(c *Config) { c.ClientUUID = "a65ewfd65ewqf4ew6f4ew65f4ew6few4f" },
+			Handler:     func(c *Config) { c.ClientUUID = "a65ewfd65ewqf4ew6f4ew65f4ew6few4f" },
 		},
 		{
 			Description: "Products is nil",
-			Handler: func(c *Config) { c.Products = nil},
+			Handler:     func(c *Config) { c.Products = nil },
 		},
 	}
 
@@ -68,7 +69,7 @@ func TestNewWithError(t *testing.T) {
 			// Assert
 			assert.Nil(t, instance)
 			require.Error(t, err)
-			assert.ErrorIs(t, err, &validationerrors.ValidationError{})
+			assert.ErrorIs(t, err, &entity.EntityError{})
 		})
 	}
 }

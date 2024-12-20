@@ -3,9 +3,10 @@ package receipt
 import (
 	"time"
 
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/services/error/field"
 	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
 type ReceiptStatus string
@@ -17,50 +18,38 @@ const (
 )
 
 type Receipt struct {
-	uuid             string
-	orderUUID        string
-	lecturerUUID     string
-	manufacturerUUID string
+	uuid.UUID
+	orderUUID        uuid.UUID
+	lecturerUUID     uuid.UUID
+	manufacturerUUID uuid.UUID
 	observations     string
 	startedIn        time.Time
 	finishedOn       time.Time
 	status           ReceiptStatus
 }
 
-func NewReceipt(orderUUID, lecturerUUID, manufacturerUUID string) (*Receipt, error) {
-	var receptError = validationerrors.New("recept")
-	var receptInstance = Receipt{
-		uuid:      uuid.New(),
-		status:    inProgress,
-		startedIn: time.Now(),
-	}
+func New(orderUUID, lecturerUUID, manufacturerUUID string) (*Receipt, error) {
+	var receptError = entity.Error("recept")
+
+	oderVO, uuidOrderErr := uuid.Parse("order_uuid", orderUUID)
+	lecturerVO, uuidLecturerErr := uuid.Parse("lecturer_uuid", lecturerUUID)
+	manufacturerVO, uuidManufacturerErr := uuid.Parse("manufacturer_uuid", manufacturerUUID)
 
 	receptError.
-		AddValidationError(uuid.IsValid("order_uuid", orderUUID)).
-		AddValidationError(uuid.IsValid("lecturer_uuid", lecturerUUID)).
-		AddValidationError(uuid.IsValid("manufacturer_uuid", manufacturerUUID))
+		AddValidationError(uuidOrderErr).
+		AddValidationError(uuidLecturerErr).
+		AddValidationError(uuidManufacturerErr)
 
 	if receptError.HasError() {
 		return nil, receptError
 	}
 
-	return &receptInstance, nil
-}
-
-func (r *Receipt) UUID() string {
-	return r.uuid
-}
-
-func (r *Receipt) OrderUUID() string {
-	return r.orderUUID
-}
-
-func (r *Receipt) LecturerUUID() string {
-	return r.lecturerUUID
-}
-
-func (r *Receipt) ManufacturerUUID() string {
-	return r.manufacturerUUID
+	return &Receipt{
+		UUID:             *uuid.New(),
+		orderUUID:        *oderVO,
+		lecturerUUID:     *lecturerVO,
+		manufacturerUUID: *manufacturerVO,
+	}, nil
 }
 
 const (
@@ -69,7 +58,8 @@ const (
 )
 
 func (r *Receipt) SetObservations(note string) error {
-	var err = validate.New("observation", note,
+	var err = validate.New(
+		"observation", note,
 		validate.IsBlank(),
 		validate.IsLengthInRange(minLengthForObservation, maxLengthForObservation),
 	)
@@ -86,7 +76,7 @@ func (r *Receipt) Status() ReceiptStatus {
 // TODO: adicionar erro
 func (r *Receipt) AcceptOrder() error {
 	if r.status != inProgress {
-		return &validate.FieldError{
+		return &field.FieldError{
 			FieldName: "status",
 			CodeError: "",
 		}
@@ -99,7 +89,7 @@ func (r *Receipt) AcceptOrder() error {
 // TODO: adicionar error
 func (r *Receipt) RejectOrder(cause string) error {
 	if r.status != inProgress {
-		return &validate.FieldError{
+		return &field.FieldError{
 			FieldName: "status",
 			CodeError: "",
 		}

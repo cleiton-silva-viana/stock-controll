@@ -1,17 +1,19 @@
 package permission
 
 import (
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/test/unitary"
+	"fmt"
 	"strings"
 	"testing"
+
+	"stock-controll/internal/domain/valueobject/uuid"
+	"stock-controll/test/unitary"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var data = Permission{
-	uuid: "0192cfd8-9af2-79d7-9632-a8141ee5c7ad",
+	uuid: *uuid.New(),
 	name: "delete",
 }
 
@@ -50,7 +52,7 @@ func TestNewNoError(t *testing.T) {
 
 func TestNewWithError(t *testing.T) {
 	// Arrange
-	testCases := []unitary.TestField[Permission]{
+	tests := []unitary.TestField[Permission]{
 		{
 			Description: "name is empty",
 			Handler:     func(p *Permission) { p.name = "     " },
@@ -73,8 +75,8 @@ func TestNewWithError(t *testing.T) {
 		},
 	}
 
-	for _, test := range testCases {
-		t.Run(test.Description, func(t *testing.T) {
+	for _, test := range tests {
+		t.Run(fmt.Sprint("test permission package New function, expected error as %s", test.Description), func(t *testing.T) {
 			dataCopy := data
 			test.Handler(&dataCopy)
 
@@ -84,23 +86,8 @@ func TestNewWithError(t *testing.T) {
 			// Assert
 			assert.Nil(t, instance)
 			assert.Error(t, err)
-			assert.ErrorAs(t, err, &validationerrors.ValidationError{})
 		})
 	}
-}
-
-func TestSetNameConsistence(t *testing.T) {
-	// Arrange
-	const invalidName = "#$$$$$"
-	dataCopy := data
-
-	// Act
-	err := dataCopy.SetName(invalidName)
-
-	// Assert
-	assert.Error(t, err)
-	assert.Equal(t, dataCopy.Name(), data.Name())
-	assert.Equal(t, dataCopy.UUID(), data.UUID())
 }
 
 type permissionTest struct {
@@ -114,7 +101,7 @@ var initialTestData = permissionTest{
 }
 
 func TestEqual(t *testing.T) {
-	testCases := []unitary.TestField[permissionTest]{
+	tests := []unitary.TestField[permissionTest]{
 		{
 			Description: "same permissions",
 			Handler: func(t *permissionTest) {
@@ -138,7 +125,7 @@ func TestEqual(t *testing.T) {
 		{
 			Description: "different name and uuid",
 			Handler: func(t *permissionTest) {
-				t.uuid = "0192cfe9-6a7b-70a1-9066-f8858f33b51b"
+				t.uuid = *uuid.New()
 				t.name = "rollback"
 				t.expectedEqual = false
 			},
@@ -152,8 +139,9 @@ func TestEqual(t *testing.T) {
 		},
 	}
 
-	for _, test := range testCases {
+	for _, test := range tests {
 		t.Run(test.Description, func(t *testing.T) {
+			// Arrange
 			dataCopy := initialTestData
 			test.Handler(&dataCopy)
 

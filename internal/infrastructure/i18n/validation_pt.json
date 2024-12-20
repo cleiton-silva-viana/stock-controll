@@ -1,0 +1,334 @@
+{
+  "ERR_FIELD_CANNOT_BE_EMPTY": {
+    "Message": "O campo %s não pode estar vazio.",
+    "Solution": "Por favor, insira um valor válido para o campo %s."
+  },
+  "ERR_FIELD_INVALID_LENGTH": {
+    "Message": "O %s deve ter exatamente %d dígitos.",
+    "Solution": "Verifique se o %s informado possui o comprimento correto."
+  },
+  "ERR_FIELD_LENGTH_OUT_OF_RANGE": {},
+  "ERR_FIELD_TOO_SHORT": {
+    "Message": "O %s informado é muito curto.",
+    "Solution": "Aumente o comprimento do %s para pelo menos %d caracteres."
+  },
+  "ERR_FIELD_TOO_LONG": {
+    "Message": "O %s informado é muito longo.",
+    "Solution": "Verifique se a %s não excede o limite de %d caracteres."
+  },
+  "ERR_FIELD_CONTAINS_NUMBERS": {
+    "Message": "O %s informado não pode conter números.",
+    "Solution": "Certifique-se de que o %s está preenchido corretamente, sem números."
+  },
+  "ERR_FIELD_CONTAINS_SPECIAL_CHARACTERS": {
+    "Message": "O %s contém caracteres não permitidos.",
+    "Solution": "Remova os caracteres especiais do %s."
+  },
+  "ERR_FIELD_CANNOT_CONTAINS_SPECIAL_CHARACTERS": {
+    "Message": "O %s contém caracteres não permitidos.",
+    "Solution": "Remova os caracteres especiais do %s."
+  },
+  "ERR_FIELD_CANNOT_CONTAINS_LETTERS": {
+    "Message": "O %s é inválido porque contém letras.",
+    "Solution": " favor, insira um %s que não contenha letras."
+  },
+  "ERR_RESOURCE_ALREADY_REGISTERED": {
+    "Message": "O %s informado já está cadastrado.",
+    "Solution": "Tente uma combinação diferente para o campo %s"
+  },
+  "ERR_RESORCE_NOT_FOUND": {
+    "Message": "O %s solicitado não foi encontrada.",
+    "Solution": "Verifique se o identificador do %s está correto."
+  },
+  "ERR_NUMBER_OUT_OF_RANGE": {
+    "Message": "O valor do %s deve estar entre %d e %d.",
+    "Solution": "Por favor, insira um valor dentro do intervalo permitido."
+  },
+  "ERR_UNSUPPORTED_TYPE": {
+    "Message": "O tipo de %s informado não é suportado.",
+    "Solution": "Por favor, insira um %s de um tipo suportado."
+  },
+  "ERR_PASSWORD_MISSING_LETTERS": {
+    "Message": "A senha informada não contém letras.",
+    "Solution": "Verifique se a senha inclui pelo menos uma letra maiúscula ou minúscula.",
+    "Details": "A senha deve conter pelo menos uma letra para ser considerada válida."
+  },
+  "ERR_PASSWORD_MISSING_LOWERCASE": {
+    "Message": "A senha informada não contém letras minúsculas.",
+    "Solution": "Inclua pelo menos uma letra minúscula na senha.",
+    "Details": "Senhas válidas devem conter pelo menos uma letra minúscula (a-z)."
+  },
+  "ERR_PASSWORD_MISSING_UPPERCASE": {
+    "Message": "A senha informada não contém letras maiúsculas.",
+    "Solution": "Inclua pelo menos uma letra maiúscula na senha.",
+    "Details": "Senhas válidas devem conter pelo menos uma letra maiúscula (A-Z)."
+  },
+  "ERR_PASSWORD_MISSING_NUMBERS": {
+    "Message": "A senha informada não contém números.",
+    "Solution": "Inclua pelo menos um número na senha.",
+    "Details": "Senhas válidas devem conter pelo menos um número (0-9)."
+  },
+  "ERR_PASSWORD_MISSING_SPECIAL_CHARACTERS": {
+    "Message": "A senha informada não contém caracteres especiais.",
+    "Solution": "Inclua pelo menos um caractere especial na senha.",
+    "Details": "Senhas válidas devem conter pelo menos um caractere especial, como @, #, $, %, etc."
+  },
+  "ERR_PASSWORD_CONTAINS_WHITESPACE": {
+    "Message": "A senha informada não pode conter espaços em branco.",
+    "Solution": "Remova quaisquer espaços em branco da senha.",
+    "Details": "Senhas válidas não devem ter espaços em branco. Verifique e ajuste conforme necessário."
+  },
+  "ERR_PASSWORD_EQUALS_USERNAME": {
+    "Message": "A senha informada não pode ser igual ao nome de usuário.",
+    "Solution": "Escolha uma senha diferente do seu nome de usuário.",
+    "Details": "Senhas não devem ser iguais ao nome de usuário ou e-mail. Isso aumenta a segurança."
+  },
+  "ERR_PASSWORD_EQUALS_PREVIOUS": {
+    "Message": "A nova senha não pode ser igual à senha anterior.",
+    "Solution": "Escolha uma senha diferente da senha que você usou anteriormente.",
+    "Details": "Para garantir a segurança, a nova senha deve ser diferente da senha anterior."
+  },
+  "ERR_SALT_GENERATION_FAILED": {
+    "Message": "Ocorreu um erro ao gerar o salt para a senha.",
+    "Solution": "Tente novamente e verifique se o sistema está funcionando corretamente.",
+    "Details": "Um erro inesperado ocorreu durante a geração do salt. Isso pode ser causado por problemas de sistema ou configuração."
+  },
+  "ERR_USER_BIRTH_DATE_TOO_RECENT": {
+    "Message": "A data de nascimento informada indica que a pessoa é menor de 18 anos.",
+    "Solution": "Verifique se a data de nascimento está correta e se a pessoa tem pelo menos 18 anos."
+  },
+  "ERR_USER_BIRTH_DATE_TOO_OLD": {
+    "Message": "A data de nascimento informada indica que a pessoa tem mais de 100 anos.",
+    "Solution": "Verifique se a data de nascimento está correta e se a pessoa tem no máximo 100 anos."
+  },
+  "ERR_USER_FUTURE_BIRTH_DATE": {
+    "Message": "A data de nascimento não pode ser uma data futura.",
+    "Solution": "Verifique se a data de nascimento informada é anterior à data atual."
+  },
+  "ERR_ADDRESS_WITH_INVALID_ZIP_CODE_FORMAT": {
+    "Message": "O formato do CEP informado é inválido.",
+    "Solution": "Por favor, insira um CEP no formato correto (ex: 12345-678)."
+  },
+  "ERR_CPF_WITH_INVALID_FORMAT": {
+    "Message": "O formato do CPF informado é inválido.",
+    "Solution": "Por favor, insira um CPF no formato correto (ex: 123.456.789-09)."
+  },
+  "ERR_USER_AGE_BELOW_LIMIT": {
+    "Message": "A idade do usuário é menor que o limite permitido.",
+    "Solution": "Por favor, insira uma idade que esteja dentro do limite permitido."
+  },
+  "ERR_USER_AGE_EXCEEDS_LIMIT": {
+    "Message": "A idade do usuário excede o limite permitido.",
+    "Solution": "Por favor, insira uma idade que esteja dentro do limite permitido."
+  },
+  "ERR_CART_INACTIVE_OR_ABANDONED": {
+    "Message": "O carrinho está inativo ou abandonado e não pode ser modificado.",
+    "Solution": "Por favor, crie um novo carrinho para adicionar itens."
+  },
+  "ERR_COUPON_USAGE_LIMIT_EXCEEDED": {
+    "Message": "O cupom foi utilizado o número máximo de vezes permitido.",
+    "Solution": "Verifique se há outros cupons disponíveis ou entre em contato com o suporte."
+  },
+  "ERR_COUPON_INVALID_DATE_RANGE": {
+    "Message": "The coupon cannot have a start date after its expiration date",
+    "Solution": "Please check the coupon dates and ensure the start date is before the expiration date."
+  },
+  "ERR_COUPON_EXPIRATION_BEFORE_START_DATE": {
+    "Message": "The expiration date of the coupon is before the start date of its applicability.",
+    "Solution": "Please ensure that the expiration date is set to a date after the start date of the coupon's applicability."
+  },
+  "ERR_COUPON_EXPIRATION_EXCEEDS_MAX_DATE": {
+    "Message": "The expiration date of the coupon exceeds the maximum allowed duration.",
+    "Solution": "Please ensure that the expiration date is set within the allowed duration from the start date of the coupon's applicability."
+  },
+  "ERR_USER_NOT_ALLOWED_TO_USE_COUPON": {
+    "Message": "O usuário não tem permissão para usar este cupom.",
+    "Solution": "Verifique as condições de uso do cupom ou entre em contato com o suporte."
+  },
+  "ERR_PERMISSION_ALREADY_REGISTERED": {
+    "Message": "A permissão já está registrada.",
+    "Solution": "Verifique se a permissão que você está tentando adicionar já foi registrada anteriormente."
+  },
+  "ERR_PERMISSION_ALREADY_ASSIGNED_TO_ROLE": {
+    "Message": "A permissão não pode ser reatribuída a esta função, pois já está atribuída.",
+    "Solution": "Por favor, verifique as permissões da função e escolha uma permissão diferente para atribuir."
+  },
+  "ERR_PERMISSION_NOT_ASSOCIATED": {
+    "Message": "A permissão especificada não está associada a nenhuma role.",
+    "Solution": "Por favor, verifique se a permissão que você está tentando remover está realmente vinculada a uma role existente."
+  },
+  "ERR_PERMISSION_NOT_FOUND": {
+    "Message": "Permissão não encontrada para o UUID fornecido.",
+    "Solution": "Verifique se o UUID está correto e se a permissão foi criada anteriormente."
+  },
+  "ERR_PRODUCT_PURCHASE_COST_OUT_OF_BOUNDS": {
+    "Message": "O custo de compra do produto deve estar dentro dos limites definidos.",
+    "Solution": "Por favor, ajuste o custo de compra para que esteja dentro do intervalo permitido."
+  },
+  "ERR_PRODUCT_SALE_PRICE_OUT_OF_BOUNDS": {
+    "Message": "O preço de venda do produto deve estar dentro dos limites definidos.",
+    "Solution": "Por favor, ajuste o preço de venda para que esteja dentro do intervalo permitido."
+  },
+  "ERR_PRODUCT_TAG_LIMIT_EXCEEDED": {
+    "Message": "O número de tags atribuídas ao produto excede o limite permitido.",
+    "Solution": "Por favor, remova algumas tags para que o total esteja dentro do limite permitido."
+  },
+  "ERR_PRODUCT_ALREADY_ASSOCIATED_WITH_TAG": {
+    "Message": "O produto já está associado a esta tag.",
+    "Solution": "Por favor, verifique os produtos associados à tag e escolha um produto diferente para associar."
+  },
+  "ERR_PRODUCT_NOT_ASSOCIATED_WITH_TAG": {
+    "Message": "O produto não está associado a esta tag.",
+    "Solution": "Por favor, verifique o UUID do produto e tente novamente."
+  },
+  "ERR_PRODUCT_EXPIRATION_DATE_TOO_FAR": {
+    "Message": "Produtos com data de vencimento posterior a 30 dias não devem ser incluídos em relatórios de produtos próximos ao vencimento.",
+    "Solution": "Por favor, revise a data de validade dos produtos antes de relatar."
+  },
+  "ERR_PROMOTION_STATUS_CHANGE_NOT_ALLOWED": {
+    "Message": "Não é possível alterar o status de uma promoção que já foi finalizada ou cancelada.",
+    "Solution": "Verifique o status da promoção e tente novamente com uma promoção ativa."
+  },
+  "ERR_PROMOTION_START_DATE_BEFORE_CURRENT": {
+    "Message": "A data de início da promoção deve ser posterior à data atual.",
+    "Solution": "Por favor, ajuste a data de início para que seja igual ou posterior à data atual."
+  },
+  "ERR_PROMOTION_START_DATE_AFTER_END_DATE": {
+    "Message": "A data de início da promoção não pode ser posterior à data de expiração.",
+    "Solution": "Por favor, ajuste a data de início para que seja anterior ou igual à data de expiração."
+  },
+  "ERR_PROMOTION_EXPIRATION_DATE_AFTER_LIMIT": {
+    "Message": "A data de expiração da promoção não pode ser posterior a [data específica].",
+    "Solution": "Por favor, ajuste a data de expiração para que esteja dentro do limite permitido."
+  },
+  "ERR_PROMOTION_EXPIRATION_DATE_BEFORE_CURRENT": {
+    "Message": "A data de expiração da promoção não pode ser anterior à data atual.",
+    "Solution": "Por favor, ajuste a data de expiração para que seja igual ou posterior à data atual."
+  },
+  "ERR_INVALID_PROMOTION_STATUS": {
+    "Message": "O status de promoção especificado é inválido.",
+    "Solution": "Verifique o status de promoção inserido e certifique-se de que está correto. Utilize um dos seguintes status válidos: 'scheduled', 'in_progress', 'ended', 'canceled'."
+  },
+  "ERR_INVALID_PROMOTION_SCOPE": {
+    "Message": "O escopo de promoção especificado é inválido.",
+    "Solution": "Verifique o escopo de promoção inserido e certifique-se de que está correto. Utilize um dos seguintes escopos válidos: 'specific', 'category', 'brand', 'manufacturer', 'distinct'."
+  },
+  " ": {
+    "Message": "Não é possível finalizar uma promoção que não esteja em progresso.",
+    "Solution": "Verifique o status da promoção e certifique-se de que ela está em progresso antes de tentar finalizá-la. Status válidos para finalização são 'in_progress'."
+  },
+  "ERR_DISCOUNT_PERCENTAGE_BELOW_MINIMUM": {
+    "Message": "A porcentagem de desconto é inferior ao mínimo permitido.",
+    "Solution": "Por favor, verifique a porcentagem de desconto e tente novamente."
+  },
+  "ERR_DISCOUNT_PERCENTAGE_EXCEEDS_MAXIMUM": {
+    "Message": "A porcentagem do desconto é maior que o máximo permitido.",
+    "Solution": "Por favor, verifique a porcentagem do desconto e tente novamente."
+  },
+  "ERR_DISCOUNT_VALUE_BELOW_MINIMUM": {
+    "Message": "O valor do desconto é menor que o mínimo permitido.",
+    "Solution": "Por favor, verifique o valor do desconto e tente novamente."
+  },
+  "ERR_DISCOUNT_VALUE_EXCEEDS_MAXIMUM": {
+    "Message": "O valor do desconto é maior que o máximo permitido.",
+    "Solution": "Por favor, verifique o valor do desconto e tente novamente."
+  },
+  "ERR_QUANTITY_EXCEEDS_STOCK": {
+    "Message": "A quantidade solicitada excede o que está disponível em estoque.",
+    "Solution": "Por favor, ajuste a quantidade para um valor igual ou inferior à quantidade em estoque."
+  },
+  "ERR_TIME_FIELDS_MUST_BE_ZEROED": {
+    "Message": "Os campos de horas, minutos e segundos devem estar zerados ao definir as datas.",
+    "Solution": "Por favor, ajuste os campos de horas, minutos e segundos para zero."
+  },
+  "ERR_MINIMUM_ONE_PRODUCT_REQUIRED_FOR_RESTOCK": {
+    "Message": "É necessário pelo menos um produto para reabastecer o estoque.",
+    "Solution": "Por favor, adicione pelo menos um produto ao pedido de reabastecimento."
+  },
+  "ERR_DELIVERY_DATE_CANNOT_BE_PAST": {
+    "Message": "Não é possível atualizar a data de entrega prevista para uma data passada.",
+    "Solution": "Por favor, selecione uma data de entrega que seja igual ou posterior à data atual."
+  },
+  "ERR_STATUS_ALREADY_ASSIGNED": {
+    "Message": "O status informado já está atribuído ao relatório.",
+    "Solution": "Por favor, selecione um status diferente para atualizar o relatório."
+  },
+  "ERR_NO_PRODUCTS_ASSOCIATED": {
+    "Message": "Não é possível registrar um relatório de vendas sem produtos associados.",
+    "Solution": "Por favor, adicione pelo menos um produto ao relatório de vendas antes de prosseguir."
+  },
+  "ERR_INVALID_TAG_TYPE": {
+    "Message": "Tipo de tag inválido: invalid",
+    "Solution": "Por favor, forneça um tipo de tag válido: promotion, attribute, category, brand ou seasonal."
+  },
+  "ERR_INVALID_COMPANY_STATUS": {
+    "Message": "O status fornecido para a empresa é inválido.",
+    "Solution": "Por favor, forneça um status válido: 'ativo' ou 'inativo'."
+  },
+  "ERR_STATUS_CHANGE_NOT_ALLOWED": {
+    "Message": "Não é possível alterar o status de uma operação já concluída.",
+    "Solution": "Por favor, verifique o status da operação e, se necessário, crie uma nova operação para realizar alterações."
+  },
+  "ERR_INVALID_DISCARD_OPERATION_STATUS": {
+    "Message": "O status fornecido para a operação de descarte é inválido.",
+    "Solution": "Por favor, forneça um status válido: 'a fazer' ou 'feita'."
+  },
+  "ERR_EXPIRED_PRODUCT_REPORTED": {
+    "Message": "Produtos já vencidos não podem ser incluídos em relatórios de produtos com data de vencimento próxima.",
+    "Solution": "Por favor, registre produtos vencidos em um relatório de vencimento apropriado."
+  },
+  "ERR_LOW_QUANTITY_PRODUCT_REPORTED": {
+    "Message": "Produtos com quantidades pífias não devem ser incluídos em relatórios de produtos próximos ao vencimento.",
+    "Solution": "Por favor, verifique as quantidades dos produtos antes de relatar."
+  },
+  "ERR_IMAGE_REQUIRED": {
+    "Message": "A imagem é obrigatória e não foi fornecida.",
+    "Solution": "Por favor, forneça uma imagem válida."
+  },
+  "ERR_FILE_READ_FAILED": {
+    "Message": "Não foi possível ler os dados do arquivo enviado. %s",
+    "Solution": "Verifique se o arquivo está no formato correto e tente enviá-lo novamente."
+  },
+  "ERR_IMAGE_DIMENSIONS_INVALID": {
+    "Message": "As dimensões da imagem são inválidas. Largura e altura devem ser maiores ou iguais a %d.",
+    "Solution": "Verifique as dimensões da imagem e tente novamente com uma imagem que atenda aos requisitos mínimos."
+  },
+  "ERR_IMAGE_NOT_SQUARE": {
+    "Message": "A imagem não é quadrada. Largura e altura devem ser iguais.",
+    "Solution": "Verifique as dimensões da imagem e tente novamente com uma imagem que tenha largura e altura iguais."
+  },
+  "ERR_NIL_OBJECT": {
+    "Message": "The object is null and cannot be modified.",
+    "Solution": "Please ensure the object is initialized before attempting to modify it."
+  },
+  "ERR_PURCHASE_AMOUNT_TOO_LOW": {
+    "Message": "The total purchase amount is below the minimum required for the fixed discount to apply. The minimum purchase amount required is %s.",
+    "Solution": "Please ensure the total purchase amount meets or exceeds the required minimum of %s to be eligible for the fixed discount."
+  },
+  "ERR_MINIMUM_PURCHASE_REQUIRED": {
+    "Message": "The total purchase amount is below the minimum required for the discount to apply. The minimum purchase amount required is $50.",
+    "Solution": "Please ensure that your total purchase amount meets or exceeds the required minimum of $50 to be eligible for the discount."
+  },
+  "ERR_SUBTOTAL_MUST_BE_GREATER_THAN_DISCOUNT": {
+    "Message": "O valor do subtotal deve ser maior que o valor do desconto para que ele possa ser aplicado.",
+    "Solution": "Por favor, ajuste o subtotal para que seja maior que o valor do desconto."
+  },
+  "ERR_DISCOUNT_CATEGORY_NOT_FOUND": {
+    "Message": "A categoria especificada não foi encontrada na lista de categorias elegíveis para desconto.",
+    "Solution": "Verifique a categoria inserida e certifique-se de que está correta. Tente novamente com uma categoria válida que se qualifique para o desconto."
+  },
+  "ERR_NEGATIVE_VALUE": {
+    "Message": "O valor especificado para %s não pode ser negativo.",
+    "Solution": "Verifique o valor inserido e certifique-se de que é positivo. Tente novamente com um valor válido."
+  },
+  "ERR_VALUE_TOO_HIGH": {
+    "Message": "O valor especificado para %s está acima do limite permitido de %f.",
+    "Solution": "Verifique o valor inserido e certifique-se de que está dentro do limite permitido. Tente novamente com um valor mais baixo."
+  },
+  "ERR_SUBTOTAL_LESS_THAN_TOTAL": {
+    "Message": "O subtotal não pode ser menor que o valor total.",
+    "Solution": "Verifique se os valores inseridos estão preenchidos corretamente."
+  },
+  "ERR_INVALID_FILE_EXTENSION": {},
+  "ERR_INVALID_UUID_FORMAT": {}
+}

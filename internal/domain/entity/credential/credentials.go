@@ -1,139 +1,74 @@
 package credential
 
 import (
-	"crypto/rand"
-	"regexp"
 	"time"
 
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
-	"stock-controll/internal/domain/services/validate"
-	"stock-controll/internal/presentation/adapter"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/valueobject/password"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
 const (
-	ErrPaswordMissingLetters           = "ERR_PASSWORD_MISSING_LETTERS"
-	ErrPaswordMissingLowercase         = "ERR_PASSWORD_MISSING_LOWERCASE"
-	ErrPaswordMissingUppercase         = "ERR_PASSWORD_MISSING_UPPERCASE"
-	ErrPaswordMissingNumbers           = "ERR_PASSWORD_MISSING_NUMBERS"
-	ErrPaswordMissingSpecialCharacters = "ERR_PASSWORD_MISSING_SPECIAL_CHARACTERS"
-	ErrPaswordContainsWhitespace       = "ERR_PASSWORD_CONTAINS_WHITESPACE"
-	ErrPaswordEqualsUsername           = "ERR_PASSWORD_EQUALS_USERNAME"
-	ErrPaswordEqualsPrevious           = "ERR_PASSWORD_EQUALS_PREVIOUS"
-	ErrSaltGenerationFailed            = "ERR_SALT_GENERATION_FAILED"
+	ErrPaswordEqualsUsername = "ERR_PASSWORD_EQUALS_USERNAME"
+	ErrPaswordEqualsPrevious = "ERR_PASSWORD_EQUALS_PREVIOUS"
 )
 
 type ICredential interface {
-	GetUUID() string
-	GetPasswordHash() []byte
-	GetPasswordSalt() []byte
-	GetCreatedAt() time.Time
-	GetUpdatedAt() time.Time
+	UUID() string
+	PasswordHash() []byte
+	PasswordSalt() []byte
+	CreatedAt() time.Time
+	UpdatedAt() time.Time
 }
 
 type Credential struct {
-	uuid         string
-	passwordHash []byte
-	passwordSalt []byte
-	resetToken   string
-	createdAt    time.Time
-	updatedAt    time.Time
+	uuid uuid.UUID
+	pass password.Password
+	createdAt time.Time
+	updatedAt time.Time
 }
 
-func NewCredential(userUUID, password string) (ICredential, error) {
-	var credentialError = validationerrors.New("credential")
-	var c = Credential{}
+func New(userUUID, pass string) (*Credential, error) {
+	var credentialError = entity.Error("credential")
+
+	parsedUUID, uuidErr := uuid.Parse("user_uuid", userUUID)
+	passwordVO, passErr := password.New(pass)
 
 	credentialError.
-		AddValidationError(c.SetPassword(password)).
-		AddValidationError(uuid.IsValid("user_uuid", userUUID))
+		AddValidationError(uuidErr).
+		AddValidationError(passErr)
 
 	if credentialError.HasError() {
 		return nil, credentialError
 	}
 
-	c.createdAt = time.Now()
-	return &c, nil
-}
-
-const (
-	passwordMinLength  = 8
-	passwordMaxLength  = 24
-	passwordSaltLength = 24
-)
-
-func (c *Credential) GetUUID() string {
-	return c.uuid
-}
-
-func (c *Credential) SetPassword(password string) error {
-	err := c.validatePassword(password)
-	if err != nil {
-		return err
+	credential := &Credential{
+		uuid:      *parsedUUID,
+		pass:  *passwordVO,
+		createdAt: time.Now(),
+		updatedAt: time.Now(),
 	}
 
-	salt, err := c.saltForPassword(passwordSaltLength)
-	if err != nil {
-		return err
-	}
-
-	c.passwordSalt = []byte(salt)
-	c.passwordHash = c.hashPassword(password, salt)
-	c.updatedAt = time.Now()
-	return nil
+	return credential, nil
 }
 
-func (c *Credential) validatePassword(password string) error {
-	return validate.New("password", password,
-		validate.IsBlank(),
-		validate.IsLengthInRange(passwordMinLength, passwordMaxLength),
-		validate.CheckNumbers(validate.Require),
-		validate.CheckLetters(validate.Require),
-		validate.CheckWithRegex(regexp.MustCompile(`[a-z]`), validate.Require, ErrPaswordMissingLowercase),
-		validate.CheckWithRegex(regexp.MustCompile(`[a-z]`), validate.Require, ErrPaswordMissingUppercase),
-		// aDICIONAR VALIDAÇÃO PARA CHECAR S ESENHA TEM CARACTERES ESPECIAIS
-		// pASSAR ERRO PERSONALIZADO AO CASO
-		validate.CheckSpecialChars(validate.Require))
+func (c *Credential) UUID() string {
+	return c.uuid.String()
 }
 
-func (c *Credential) saltForPassword(length uint) ([]byte, error) {
-	var salt = make([]byte, length)
-	salt, err := generateSalt(int(length))
-	if err != nil {
-		return nil, &validate.FieldError{
-			FieldName: "password",
-			CodeError: ErrSaltGenerationFailed,
-		}
-	}
-	return salt, nil
-}
-
-func (c *Credential) hashPassword(password string, salt []byte) []byte {
-	return []byte(adapter.NewHasher().GenerateHash([]byte(password), salt))
-}
-
-func (c *Credential) GetPasswordHash() []byte {
-	return c.passwordHash
-}
-
-func (c *Credential) GetPasswordSalt() []byte {
-	return c.passwordSalt
-}
-
-func (c *Credential) GetCreatedAt() time.Time {
+func (c *Credential) CreatedAt() time.Time {
 	return c.createdAt
 }
 
-func (c *Credential) GetUpdatedAt() time.Time {
+func (c *Credential) UpdatedAt() time.Time {
 	return c.updatedAt
 }
 
-// TODO: mover para método da senha
-func generateSalt(length int) ([]byte, error) {
-	salt := make([]byte, length)
-	_, err := rand.Read(salt)
-	if err != nil {
-		return nil, err
+// Lógica para verificar se a senha não é igual a senha anterior
+func (c *Credential) UpdatePassword(pass string) error {
+	newPass, err := password.New(pass)
+	if err == nil {
+		c.pass = *newPass
 	}
-	return salt, nil
+	return err
 }

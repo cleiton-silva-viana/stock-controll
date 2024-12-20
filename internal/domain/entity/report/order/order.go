@@ -3,13 +3,14 @@ package order
 import (
 	"time"
 
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/services/error/field"
 	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
 type Product struct {
-	UUID     string
+	uuid.UUID
 	quantity int
 	price    int
 }
@@ -24,9 +25,9 @@ const (
 )
 
 type Order struct {
-	uuid               string
-	buyerUUID          string
-	supplierUUID       string
+	uuid.UUID
+	buyerUUID          uuid.UUID
+	supplierUUID       uuid.UUID
 	requestMadeOn      time.Time
 	expectedDeliveryOn time.Time
 	products           []Product
@@ -35,33 +36,32 @@ type Order struct {
 	// profPayment ---> implementar
 }
 
-func NewOrder(buyerUUID, supplierUUID string, expectedDelivery time.Time, products []Product) (*Order, error) {
-	var orderError = validationerrors.New("order")
-	var orderInstance = &Order{
-		uuid:               uuid.New(),
-		buyerUUID:          buyerUUID,
-		supplierUUID:       supplierUUID,
-		products:           products,
-		expectedDeliveryOn: expectedDelivery,
-		requestMadeOn:      time.Now(),
-		status:             pending,
-	}
+func New(buyerUUID, supplierUUID string, expectedDelivery time.Time, products []Product) (*Order, error) {
+	var orderError = entity.Error("order")
+
+	buyerVO, uuidBuyerErr := uuid.Parse("buyer_uuid", buyerUUID)
+	supplierVO, uuidSupplierErr := uuid.Parse("supplier_uuid", supplierUUID)
 
 	orderError.
-		AddValidationError(uuid.IsValid("buyer_uuid", buyerUUID)).
-		AddValidationError(uuid.IsValid("supplier_uuid", supplierUUID)).
-		AddValidationError(orderInstance.setProducts(products)).
-		AddValidationError(orderInstance.UpdateExpectedDelivery(expectedDelivery))
+		AddValidationError(uuidBuyerErr).
+		AddValidationError(uuidSupplierErr)
+
+		// AddValidationError(orderInstance.setProducts(products)).
+		// AddValidationError(orderInstance.UpdateExpectedDelivery(expectedDelivery))
 
 	if orderError.HasError() {
 		return nil, orderError
 	}
 
-	return orderInstance, nil
-}
-
-func (o *Order) UUID() string {
-	return o.uuid
+	return &Order{
+		UUID:               *uuid.New(),
+		buyerUUID:          *buyerVO,
+		supplierUUID:       *supplierVO,
+		products:           products,
+		expectedDeliveryOn: expectedDelivery,
+		requestMadeOn:      time.Now(),
+		status:             pending,
+	}, nil
 }
 
 // TODO: tornar verificações mais robustas
@@ -75,20 +75,12 @@ const ErrMinimOneProductRequiredForRestock = "ERR_MINIMUM_ONE_PRODUCT_REQUIRED_F
 
 func (o *Order) setProducts(products []Product) error {
 	if len(products) == 0 {
-		return &validate.FieldError{
+		return &field.FieldError{
 			FieldName: "products",
 			CodeError: ErrMinimOneProductRequiredForRestock,
 		}
 	}
 	return nil
-}
-
-func (o *Order) BuyerUUID() string {
-	return o.buyerUUID
-}
-
-func (o *Order) SupplierUUID() string {
-	return o.supplierUUID
 }
 
 func (o *Order) ExpectedDelivery() time.Time {
@@ -100,8 +92,7 @@ const ErrDeliveryDateCannotBePast = "ERR_DELIVERY_DATE_CANNOT_BE_PAST"
 
 func (o *Order) UpdateExpectedDelivery(expectedDelivery time.Time) error {
 	var err = validate.New[time.Time](
-		"expected_delivery",
-		expectedDelivery,
+		"expected_delivery", expectedDelivery,
 		validate.IsBeforeThan(o.requestMadeOn, ErrDeliveryDateCannotBePast),
 	)
 	if err == nil {
@@ -126,14 +117,14 @@ const (
 
 func (o *Order) SetStatus(newStatus OrderStatus) error {
 	if o.status == newStatus {
-		return &validate.FieldError{
+		return &field.FieldError{
 			FieldName: "status",
 			CodeError: ErrStatusAlreadyAssigned,
 		}
 	}
 
 	if o.status == completed || o.status == canceled {
-		return &validate.FieldError{
+		return &field.FieldError{
 			FieldName: "status",
 			CodeError: ErrReportCannotBeModified,
 		}

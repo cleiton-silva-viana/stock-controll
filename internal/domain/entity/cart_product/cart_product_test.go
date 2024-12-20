@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	product "stock-controll/internal/domain/entity/product"
-	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/error/entity"
 
 	productMock "stock-controll/test/mock/entity/product"
 	promotionMock "stock-controll/test/mock/entity/promotion"
@@ -55,7 +55,7 @@ func TestNewWithError(t *testing.T) {
 			// Assert
 			assert.Nil(t, instance)
 			require.Error(t, err)
-			assert.ErrorAs(t, err, &validationerrors.ValidationError{})
+			assert.ErrorAs(t, err, &entity.EntityError{})
 		})
 	}
 }

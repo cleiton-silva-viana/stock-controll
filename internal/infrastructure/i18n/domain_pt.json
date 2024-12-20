@@ -1,0 +1,5 @@
+{
+    "ERR_PRODUCT_REQUIRED_FOR_APPLY_DISCOUNT": {
+        "message": "O produto especificado é nulo. Um produto não nulo é necessário para aplicar o desconto."
+    }
+}

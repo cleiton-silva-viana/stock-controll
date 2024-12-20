@@ -3,12 +3,11 @@ package address
 import (
 	"regexp"
 
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/error/entity"
 	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
-// TODO: Adicionar os setters
 type IAddress interface {
 	Street() string
 	Number() int
@@ -19,7 +18,7 @@ type IAddress interface {
 }
 
 type Address struct {
-	uuid       string
+	uuid.UUID
 	street     string
 	number     int
 	complement string
@@ -37,27 +36,53 @@ type Config struct {
 	PostalCode string
 }
 
-func New(config Config) (IAddress, *validationerrors.ValidationError) {
-	a := Address{
-		uuid: uuid.New(),
+func New(config Config) (IAddress, error) {
+
+	entityError := entity.Error("address").
+		AddValidationError(validateStreet(config.Street)).
+		AddValidationError(validateCity(config.City)).
+		AddValidationError(validateState(config.State)).
+		AddValidationError(validatePostalCode(config.PostalCode)).
+		AddValidationError(validateComplement(config.Complement)).
+		AddValidationError(validateNumber(config.Number))
+
+	if entityError.HasError() {
+		return nil, entityError
 	}
 
-	err := validationerrors.New("address").
-		AddValidationError(a.SetStreet(config.Street)).
-		AddValidationError(a.SetCity(config.City)).
-		AddValidationError(a.SetState(config.State)).
-		AddValidationError(a.SetPostalCode(config.PostalCode)).
-		AddValidationError(a.SetComplement(config.Complement)).
-		AddValidationError(a.SetNumber(config.Number))
+	return &Address{
+		UUID:       *uuid.New(),
+		street:     config.Street,
+		number:     config.Number,
+		complement: config.Complement,
+		city:       config.City,
+		state:      config.State,
+		postalCode: config.PostalCode,
+	}, nil
+}
 
-	if err.HasError() {
-		return nil, err
-	}
-	return &a, nil
+func (a *Address) Number() int {
+	return a.number
 }
 
 func (a *Address) Street() string {
 	return a.street
+}
+
+func (a *Address) City() string {
+	return a.city
+}
+
+func (a *Address) State() string {
+	return a.state
+}
+
+func (a *Address) PostalCode() string {
+	return a.postalCode
+}
+
+func (a *Address) Complement() string {
+	return a.complement
 }
 
 const (
@@ -65,20 +90,13 @@ const (
 	maxStreetNameLength = 40
 )
 
-func (a *Address) SetStreet(street string) error {
-	err := validate.New[string]("street", street,
+func validateStreet(street string) error {
+	return validate.New[string](
+		"street", street,
 		validate.IsBlank(),
 		validate.IsLengthInRange(minStreetNameLength, maxStreetNameLength),
 		validate.CheckSpecialChars(validate.Disallow),
 	)
-	if err == nil {
-		a.street = street
-	}
-	return err
-}
-
-func (a *Address) Number() int {
-	return a.number
 }
 
 const (
@@ -86,14 +104,11 @@ const (
 	maxNumberHome = 100000
 )
 
-func (a *Address) SetNumber(number int) error {
-	err := validate.New[int]("number", number,
+func validateNumber(number int) error {
+	return validate.New[int](
+		"number", number,
 		validate.IsInRange(minNumberHome, maxNumberHome),
 	)
-	if err == nil {
-		a.number = number
-	}
-	return err
 }
 
 const (
@@ -101,24 +116,13 @@ const (
 	maxComplementLength = 150
 )
 
-func (a *Address) Complement() string {
-	return a.complement
-}
-
-func (a *Address) SetComplement(complement string) error {
-	err := validate.New[string]("complement", complement,
+func validateComplement(complement string) error {
+	return validate.New[string](
+		"complement", complement,
 		validate.IsBlank(),
 		validate.IsLengthInRange(minComplementLength, maxComplementLength),
 		validate.CheckSpecialChars(validate.Disallow),
 	)
-	if err == nil {
-		a.complement = complement
-	}
-	return err
-}
-
-func (a *Address) City() string {
-	return a.city
 }
 
 const (
@@ -126,20 +130,14 @@ const (
 	maxCityNameLength = 50
 )
 
-func (a *Address) SetCity(city string) error {
-	err := validate.New[string]("city", city,
+func validateCity(city string) error {
+	return validate.New[string](
+		"city", city,
 		validate.IsBlank(),
 		validate.CheckSpecialChars(validate.Disallow),
+		validate.CheckNumbers(validate.Disallow),
 		validate.IsLengthInRange(minCityNameLength, maxCityNameLength),
 	)
-	if err == nil {
-		a.city = city
-	}
-	return err
-}
-
-func (a *Address) State() string {
-	return a.state
 }
 
 const (
@@ -147,32 +145,23 @@ const (
 	maxStateNameLength = 60
 )
 
-func (a *Address) SetState(state string) error {
-	err := validate.New[string]("state", state,
+func validateState(state string) error {
+	return validate.New[string](
+		"state", state,
 		validate.IsBlank(),
 		validate.IsLengthInRange(minStateNameLength, maxStateNameLength),
+		validate.CheckNumbers(validate.Disallow),
 		validate.CheckSpecialChars(validate.Disallow),
 	)
-	if err == nil {
-		a.state = state
-	}
-	return err
-}
-
-func (a *Address) PostalCode() string {
-	return a.postalCode
 }
 
 const ErrAddressWithInvalidZipCodeFormat = "ERR_ADDRESS_WITH_INVALID_ZIP_CODE_FORMAT"
 
-func (a *Address) SetPostalCode(code string) error {
+func validatePostalCode(code string) error {
 	re := `^\d{5}\-\d{3}$`
-	err := validate.New[string]("postal_code", code,
+	return validate.New[string](
+		"postal_code", code,
 		validate.IsBlank(),
 		validate.IsFormatValid(regexp.MustCompile(re), ErrAddressWithInvalidZipCodeFormat),
 	)
-	if err == nil {
-		a.postalCode = code
-	}
-	return err
 }

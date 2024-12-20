@@ -3,9 +3,9 @@ package contact
 import (
 	"regexp"
 
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/error/entity"
 	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
 type IContact interface {
@@ -17,57 +17,55 @@ type IContact interface {
 }
 
 type Contact struct {
-	uuid  string
+	uuid uuid.UUID
 	phone string
 	email string
 }
 
-func New(email, phone string) (IContact, error) {
-	var contactInstance = Contact{
-		uuid: uuid.New(),
-	}
+func New(email, phone string) (*Contact, error) {
 
-	var err = validationerrors.New("contact").
-		AddValidationError(contactInstance.SetEmail(email)).
-		AddValidationError(contactInstance.SetPhone(phone))
+	var err = entity.Error("contact").
+		AddValidationError(validateEmail(email)).
+		AddValidationError(validatePhone(phone))
 
 	if err.HasError() {
 		return nil, err
 	}
 
-	return &contactInstance, nil
+	return &Contact{
+		uuid:  *uuid.New(),
+		phone: phone,
+		email: email,
+	}, nil
 }
 
 func (c *Contact) UUID() string {
-	return c.uuid
+	return c.uuid.String()
 }
 
 func (c *Contact) Email() string {
 	return c.email
 }
 
+func (c *Contact) Phone() string {
+	return c.phone
+}
+
 const (
-	emailMinLength          = 12
+	emailMinLength          = 8
 	emailMaxLength          = 255
 	ErrCPFWithInvalidFormat = "ERR_CPF_WITH_INVALID_FORMAT"
 )
 
-func (c *Contact) SetEmail(email string) error {
+func validateEmail(email string) error {
 	const re = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 
-	var err = validate.New("email", email,
+	return validate.New(
+		"email", email,
 		validate.IsBlank(),
 		validate.IsLengthInRange(emailMinLength, emailMaxLength),
 		validate.IsFormatValid(regexp.MustCompile(re), ErrCPFWithInvalidFormat),
 	)
-	if err == nil {
-		c.email = email
-	}
-	return err
-}
-
-func (c *Contact) Phone() string {
-	return c.phone
 }
 
 const (
@@ -76,18 +74,14 @@ const (
 	ErrPhoneWithInvalidFormat = "ERR_PHONE_WITH_INVALID_FORMAT"
 )
 
-func (c *Contact) SetPhone(phone string) error {
+func validatePhone(phone string) error {
 	const re = `^[.(](\d{2})[.)](\d{4,5})[.-](\d{4}$)`
 
-	var err = validate.New("phone", phone,
+	return validate.New(
+		"phone", phone,
 		validate.IsBlank(),
 		validate.IsLengthInRange(PhoneMinLength, PhoneMaxLength),
 		validate.CheckLetters(validate.Disallow),
 		validate.IsFormatValid(regexp.MustCompile(re), ErrPhoneWithInvalidFormat),
 	)
-
-	if err == nil {
-		c.phone = phone
-	}
-	return err
 }

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"stock-controll/internal/domain/entity/tag"
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/valueobject/uuid"
 
 	"stock-controll/test/unitary"
 
@@ -18,9 +18,9 @@ var data = Config{
 	Name:             "metal ice",
 	Description:      "a metal with ice for your pratice",
 	Barcode:          "12346631234988",
-	BrandUUID:        uuid.New(),
-	ManufacturerUUID: uuid.New(),
-	CategoryUUID:     uuid.New(),
+	BrandUUID:        uuid.New().String(),
+	ManufacturerUUID: uuid.New().String(),
+	CategoryUUID:     uuid.New().String(),
 }
 
 func TestNewNoError(t *testing.T) {
@@ -128,19 +128,19 @@ func TestNewWithError(t *testing.T) {
 			// Assert
 			assert.Nil(t, result)
 			require.Error(t, err)
-			assert.ErrorAs(t, err, &validationerrors.ValidationError{})
+			assert.ErrorAs(t, err, &entity.EntityError{})
 		})
 	}
 }
 
 var productInstance = Product{
-	uuid:             uuid.New(),
+	uuid:             *uuid.New(),
 	name:             "cookier ice",
 	description:      "a metal with ice for your pratice",
 	barcode:          "12346631234988",
-	brandUUID:        uuid.New(),
-	manufacturerUUID: uuid.New(),
-	categoryUUID:     uuid.New(),
+	brandUUID:        *uuid.New(),
+	manufacturerUUID: *uuid.New(),
+	categoryUUID:     *uuid.New(),
 	cost:             2.99,
 	price:            10,
 	quantity:         39,
@@ -312,20 +312,6 @@ func TestStateConsistencyAfterInvalidSet(t *testing.T) {
 		},
 		{
 			T:            t,
-			Description:  "test consistence of product name",
-			Getter:       func() interface{} { return dataCopy.Name },
-			Setter:       func(value interface{}) error { return dataCopy.SetName(value.(string)) },
-			InvalidValue: "Post Malon3$#@",
-		},
-		{
-			T:            t,
-			Description:  "test consistence of product description",
-			Getter:       func() interface{} { return dataCopy.Name },
-			Setter:       func(value interface{}) error { return dataCopy.SetDescription(value.(string)) },
-			InvalidValue: strings.Repeat("a", maxDescriptionLength+1),
-		},
-		{
-			T:            t,
 			Description:  "test consistence of product tag",
 			Getter:       func() interface{} { return dataCopy.Name },
 			Setter:       func(value interface{}) error { return dataCopy.SetTag(value.(tag.Tag)) },
@@ -337,34 +323,6 @@ func TestStateConsistencyAfterInvalidSet(t *testing.T) {
 			Getter:       func() interface{} { return dataCopy.Name },
 			Setter:       func(value interface{}) error { return dataCopy.SetQuantity(value.(int)) },
 			InvalidValue: -1,
-		},
-		{
-			T:            t,
-			Description:  "test consistence of barcode value",
-			Getter:       func() interface{} { return dataCopy.Barcode },
-			Setter:       func(value interface{}) error { return dataCopy.SetBarcode(value.(string)) },
-			InvalidValue: "",
-		},
-		{
-			T:            t,
-			Description:  "test consistence of  product brand UUID",
-			Getter:       func() interface{} { return dataCopy.BrandUUID },
-			Setter:       func(value interface{}) error { return dataCopy.SetBrandUUID(value.(string)) },
-			InvalidValue: "",
-		},
-		{
-			T:            t,
-			Description:  "test consistence of manufacturer UUID",
-			Getter:       func() interface{} { return dataCopy.ManufacturerUUID },
-			Setter:       func(value interface{}) error { return dataCopy.SetManufacturerUUID(value.(string)) },
-			InvalidValue: "",
-		},
-		{
-			T:            t,
-			Description:  "test consistence of category UUID",
-			Getter:       func() interface{} { return dataCopy.CategoryUUID },
-			Setter:       func(value interface{}) error { return dataCopy.SetCategoryUUID(value.(string)) },
-			InvalidValue: "",
 		},
 	}
 

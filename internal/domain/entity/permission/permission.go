@@ -3,34 +3,42 @@ package permission
 // TODO: Usar entityError
 
 import (
-	validationError "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/error/entity"
 	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
 type Permission struct {
-	uuid string
+	uuid uuid.UUID
 	name string
 }
 
 func New(name string) (*Permission, error) {
-	var permissionError = validationError.New("permission")
-	var permissionInstance = Permission{}
-
-	permissionError.
-		AddValidationError(permissionInstance.SetName(name))
+	var permissionError = entity.Error("permission").
+		AddValidationError(validateName(name))
 
 	if permissionError.HasError() {
 		return nil, permissionError
 	}
-	return &permissionInstance, nil
+	return &Permission{
+		uuid: *uuid.New(),
+		name: name,
+	}, nil
 }
 
 func (p *Permission) UUID() string {
-	return p.uuid
+	return p.uuid.String()
 }
 
 func (p *Permission) Name() string {
 	return p.name
+}
+
+func (p *Permission) Equals(other *Permission) bool {
+	if other == nil {
+		return false
+	}
+	return p.UUID() == other.UUID() && p.name == other.name
 }
 
 const (
@@ -38,22 +46,12 @@ const (
 	maxNameLength = 24
 )
 
-func (p *Permission) SetName(name string) error {
-	err := validate.New[string]("name", name,
+func validateName(name string) error {
+	return validate.New[string](
+		"name", name,
 		validate.IsBlank(),
 		validate.IsLengthInRange(minNameLength, maxNameLength),
 		validate.CheckNumbers(validate.Disallow),
 		validate.CheckSpecialChars(validate.Disallow),
 	)
-	if err == nil {
-		p.name = name
-	}
-	return err
-}
-
-func (p *Permission) Equals(other *Permission) bool {
-	if other == nil {
-		return false
-	}
-	return p.uuid == other.uuid && p.name == other.name
 }

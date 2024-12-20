@@ -2,60 +2,41 @@ package role
 
 import (
 	"fmt"
+
 	"stock-controll/internal/domain/entity/permission"
-	validationError "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/services/error/field"
 	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
 type Role struct {
-	uuid        string
+	uuid uuid.UUID
 	name        string
 	permissions map[string]permission.Permission
 }
 
 func New(name string) (*Role, error) {
-	var roleInstance = Role{
-		uuid:        uuid.New(),
-		name:        name,
-		permissions: make(map[string]permission.Permission),
-	}
-
-	var roleError = validationError.New("role").
-		AddValidationError(roleInstance.SetName(name))
+	roleError := entity.Error("role").
+		AddValidationError(validateName(name))
 
 	if roleError.HasError() {
 		return nil, roleError
 	}
 
-	roleInstance.uuid = uuid.New()
-	return &roleInstance, nil
+	return &Role{
+		uuid: *uuid.New(),
+		name: name,
+		permissions: make(map[string]permission.Permission),
+	}, nil
 }
 
 func (r *Role) UUID() string {
-	return r.uuid
+	return r.uuid.String()
 }
 
 func (r *Role) Name() string {
 	return r.name
-}
-
-const (
-	minNameLengthForRole = 3
-	maxNameLengthForRole = 24
-)
-
-func (r *Role) SetName(name string) error {
-	err := validate.New[string]("name", name,
-		validate.IsBlank(),
-		validate.IsLengthInRange(minNameLengthForRole, maxNameLengthForRole),
-		validate.CheckNumbers(validate.Disallow),
-		validate.CheckSpecialChars(validate.Disallow),
-	)
-	if err == nil {
-		r.name = name
-	}
-	return err
 }
 
 func (r *Role) Permissions() []permission.Permission {
@@ -68,11 +49,11 @@ func (r *Role) Permissions() []permission.Permission {
 
 const ErrPermissionAlreadyAssignedToRole = "ERR_PERMISSION_ALREADY_ASSIGNED_TO_ROLE"
 
-func (r *Role) SetPermission(permission permission.Permission) error {
+func (r *Role) AddPermission(permission permission.Permission) error {
 	permissionUUID := permission.UUID()
 	exists := r.HasPermission(permissionUUID)
 	if exists {
-		return &validate.FieldError{
+		return &field.FieldError{
 			FieldName: "permissions",
 			CodeError: fmt.Sprint(ErrPermissionAlreadyAssignedToRole, permissionUUID),
 		}
@@ -81,16 +62,12 @@ func (r *Role) SetPermission(permission permission.Permission) error {
 	return nil
 }
 
-func (r *Role) PermissionByID(uuid string) permission.Permission {
-	return r.permissions[uuid]
-}
-
 const ErrPermissionNotAssociated = "ERR_PERMISSION_NOT_ASSOCIATED"
 
 func (r *Role) RemovePermission(permissionUUID string) error {
 	exists := r.HasPermission(permissionUUID)
 	if !exists {
-		return &validate.FieldError{
+		return &field.FieldError{
 			FieldName: "permissions",
 			CodeError: ErrPermissionNotAssociated,
 		}
@@ -99,7 +76,25 @@ func (r *Role) RemovePermission(permissionUUID string) error {
 	return nil
 }
 
+func (r *Role) PermissionByID(uuid string) permission.Permission {
+	return r.permissions[uuid]
+}
+
 func (r *Role) HasPermission(uuid string) bool {
 	_, exists := r.permissions[uuid]
 	return exists
+}
+
+const (
+	minLength = 3
+	maxLength = 24
+)
+
+func validateName(name string) error {
+	return validate.New[string]("name", name,
+		validate.IsBlank(),
+		validate.IsLengthInRange(minLength, maxLength),
+		validate.CheckNumbers(validate.Disallow),
+		validate.CheckSpecialChars(validate.Disallow),
+	)
 }

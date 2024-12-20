@@ -4,27 +4,36 @@ import (
 	"strings"
 	"testing"
 
-	"stock-controll/internal/domain/services/uuid"
-	
+	"stock-controll/internal/domain/valueobject/uuid"
+
 	"stock-controll/test/unitary"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var config = Config{
-	Street:     unitary.Fake.Address().StreetName(),
-	City:       unitary.Fake.Address().City(),
-	State:      unitary.Fake.Address().State(),
-	Complement: "apto",
-	PostalCode: "21000-220",
-	Number:     unitary.Fake.Address().Faker.Currency().Number(),
+func Setup() (*Config, *Address) {
+	return &Config{
+			Street:     unitary.Fake.Address().StreetName(),
+			City:       unitary.Fake.Address().City(),
+			State:      unitary.Fake.Address().State(),
+			Complement: "apto",
+			PostalCode: "21000-220",
+			Number:     unitary.Fake.Address().Faker.Currency().Number(),
+		}, &Address{
+			UUID:       *uuid.New(),
+			street:     unitary.Fake.Address().StreetName(),
+			city:       unitary.Fake.Address().City(),
+			state:      unitary.Fake.Address().State(),
+			complement: "apto",
+			postalCode: "21000-220",
+			number:     unitary.Fake.Address().Faker.Currency().Number(),
+		}
 }
 
 func TestNewAddressNoError(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	testCases := []unitary.TestField[Config]{
 		{
 			Description: "street name length with compoust name",
@@ -74,21 +83,22 @@ func TestNewAddressNoError(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.Description, func(t *testing.T) {
-			copy := config
-			test.Handler(&copy)
+			// Arrange
+			c, _ := Setup()
+			test.Handler(c)
 
 			// Act
-			addressInstance, err := New(copy)
+			addressInstance, err := New(*c)
 
 			// Assert
 			assert.Nil(t, err)
 			require.NotNil(t, addressInstance)
-			assert.Equal(t, copy.Street, addressInstance.Street())
-			assert.Equal(t, copy.City, addressInstance.City())
-			assert.Equal(t, copy.State, addressInstance.State())
-			assert.Equal(t, copy.Complement, addressInstance.Complement())
-			assert.Equal(t, copy.PostalCode, addressInstance.PostalCode())
-			assert.Equal(t, copy.Number, addressInstance.Number())
+			assert.Equal(t, c.Street, addressInstance.Street())
+			assert.Equal(t, c.City, addressInstance.City())
+			assert.Equal(t, c.State, addressInstance.State())
+			assert.Equal(t, c.Complement, addressInstance.Complement())
+			assert.Equal(t, c.PostalCode, addressInstance.PostalCode())
+			assert.Equal(t, c.Number, addressInstance.Number())
 		})
 	}
 }
@@ -96,7 +106,6 @@ func TestNewAddressNoError(t *testing.T) {
 func TestNewAddressWithError(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	testCases := []unitary.TestField[Config]{
 		{
 			Description: "street name length is short than allowed",
@@ -158,83 +167,16 @@ func TestNewAddressWithError(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.Description, func(t *testing.T) {
-			copy := config
-			test.Handler(&copy)
+			// Arrange
+			c, _ := Setup()
+			test.Handler(c)
 
 			// Act
-			addressInstance, err := New(copy)
+			result, err := New(*c)
 
 			// Assert
-			assert.Nil(t, addressInstance)
+			assert.Nil(t, result)
 			assert.NotNil(t, err)
-		})
-	}
-}
-
-var addressInstance = Address{
-	uuid:       uuid.New(),
-	street:     unitary.Fake.Address().StreetName(),
-	city:       unitary.Fake.Address().City(),
-	state:      unitary.Fake.Address().State(),
-	complement: "apto",
-	postalCode: "21000-220",
-	number:     unitary.Fake.Address().Faker.Currency().Number(),
-}
-
-func TestStateConsistencyAfterInvalidSet(t *testing.T) {
-	copy := addressInstance
-
-	// Arrange
-	testCases := []unitary.Consistence{
-		{
-			T:            t,
-			Description:  "test consistence of street name",
-			Getter:       func() interface{} { return copy.street },
-			Setter:       func(value interface{}) error { return copy.SetStreet(value.(string)) },
-			InvalidValue: "Street Z$r0",
-		},
-		{
-			T:            t,
-			Description:  "test consistence of home number",
-			Getter:       func() interface{} { return copy.City },
-			Setter:       func(value interface{}) error { return copy.SetNumber(value.(int)) },
-			InvalidValue: -1,
-		},
-		{
-			T:            t,
-			Description:  "test consistence of complement",
-			Getter:       func() interface{} { return copy.City },
-			Setter:       func(value interface{}) error { return copy.SetComplement(value.(string)) },
-			InvalidValue: strings.Repeat("a", maxComplementLength+1),
-		},
-		{
-			T:            t,
-			Description:  "test consistence of city name",
-			Getter:       func() interface{} { return copy.City },
-			Setter:       func(value interface{}) error { return copy.SetCity(value.(string)) },
-			InvalidValue: "#%¨#$5",
-		},
-		{
-			T:            t,
-			Description:  "test consistence of state",
-			Getter:       func() interface{} { return copy.City },
-			Setter:       func(value interface{}) error { return copy.SetCity(value.(string)) },
-			InvalidValue: "_______",
-		},
-		{
-			T:            t,
-			Description:  "test consistence of postal code",
-			Getter:       func() interface{} { return copy.City },
-			Setter:       func(value interface{}) error { return copy.SetCity(value.(string)) },
-			InvalidValue: "21550-300",
-		},
-	}
-
-	for _, test := range testCases {
-		t.Run(test.Description, func(t *testing.T) {
-
-			// Act & Assert
-			unitary.ConsistenceTest(test)
 		})
 	}
 }

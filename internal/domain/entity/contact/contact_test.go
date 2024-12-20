@@ -5,16 +5,19 @@ import (
 	"strings"
 	"testing"
 
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/valueobject/uuid"
+	
 	"stock-controll/test/unitary"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var person = Contact{
-	email: unitary.Fake.Person().Contact().Email,
-	phone: "(61)3517-3828",
+func Setup() *Contact {
+	return &Contact{
+		email: unitary.Fake.Person().Contact().Email,
+		phone: "(61)3517-3828",
+	}
 }
 
 func TestNewNoError(t *testing.T) {
@@ -42,17 +45,17 @@ func TestNewNoError(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.Description, func(t *testing.T) {
-			var data = person
-			test.Handler(&data)
+			var p = Setup()
+			test.Handler(p)
 
 			// Act
-			contact, err := New(data.email, data.phone)
+			contact, err := New(p.email, p.phone)
 
 			// Arrange
 			assert.NoError(t, err)
 			require.NotNil(t, contact)
-			assert.Equal(t, data.phone, contact.Phone())
-			assert.Equal(t, data.email, contact.Email())
+			assert.Equal(t, p.phone, contact.Phone())
+			assert.Equal(t, p.email, contact.Email())
 			assert.NoError(t, uuid.IsValid("contact_uuid", contact.UUID()))
 		})
 	}
@@ -150,11 +153,11 @@ func TestNewWithError(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.Description, func(t *testing.T) {
-			var data = person
-			test.Handler(&data)
+			var p = Setup()
+			test.Handler(p)
 
 			// Act
-			contact, err := New(data.email, data.phone)
+			contact, err := New(p.email, p.phone)
 
 			// Assert
 			assert.Nil(t, contact)
@@ -163,28 +166,3 @@ func TestNewWithError(t *testing.T) {
 	}
 }
 
-func TestStateConsistencyAfterInvalidSet(t *testing.T) {
-	testCases := []unitary.Consistence{
-		{
-			T:            t,
-			Description:  "test consistence of email",
-			Getter:       func() interface{} { return person.Email },
-			Setter:       func(value interface{}) error { return person.SetEmail(value.(string)) },
-			InvalidValue: "emailWithoutDomain@",
-		},
-		{
-			T:            t,
-			Description:  "test consistence of phone",
-			Getter:       func() interface{} { return person.Phone },
-			Setter:       func(value interface{}) error { return person.SetPhone(value.(string)) },
-			InvalidValue: "215554228578",
-		},
-	}
-
-	for _, test := range testCases {
-		t.Run(test.Description, func(t *testing.T) {
-
-			unitary.ConsistenceTest(test)
-		})
-	}
-}

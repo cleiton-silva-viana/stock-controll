@@ -1,14 +1,16 @@
 package coupon
 
 import (
+	"stock-controll/internal/domain/valueobject/discount/scope"
+	"stock-controll/internal/domain/valueobject/summary"
 	"time"
 
 	"stock-controll/internal/domain/entity/product"
 	"stock-controll/internal/domain/entity/role"
-	"stock-controll/internal/domain/services/discount"
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/services/error/field"
 	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
 type ICoupon interface {
@@ -16,43 +18,43 @@ type ICoupon interface {
 	Name() string
 	MinPurchaseAmount() float64
 	ExpirationDate() time.Time
-	UsageLimit() CouponUseLimit
-	Exclusivity() CouponExclusivity
+	UsageLimit() UseLimit
+	Exclusivity() Exclusivity
 	IsUsable() bool
-	Redeem(purchasedProducts []product.IProduct) (discount.DiscountSummary, error)
+	Redeem(purchasedProducts []product.IProduct) (summary.Summary, error)
 	IsProductValid(product product.IProduct) bool
 }
 
-type CouponExclusivity string
+type Exclusivity string
 
 const (
-	AllCustomers        CouponExclusivity = "all_customer"
-	RegisteredCustomers CouponExclusivity = "registered_customer"
-	Employees           CouponExclusivity = "employee"
+	AllCustomers        Exclusivity = "all_customer"
+	RegisteredCustomers Exclusivity = "registered_customer"
+	Employees           Exclusivity = "employee"
 )
 
-type CouponUseLimit int
+type UseLimit int
 
 const (
-	Unlimited CouponUseLimit = -1
+	Unlimited UseLimit = -1
 )
 
 type Coupon struct {
-	uuid              string
+	uuid              uuid.UUID
 	name              string
 	minPurchaseAmount float64
-	discountScope     discount.IProductSpecificDiscountStrategy
+	discountScope     scope.IProductSpecificDiscountStrategy
 	startDate         time.Time
 	expirationDate    time.Time
-	usageLimit        CouponUseLimit
+	usageLimit        UseLimit
 	currentUsage      int
-	exclusivity       CouponExclusivity
+	exclusivity       Exclusivity
 }
 
 type Config struct {
 	Name              string
 	MinPurchaseAmount float64
-	DiscountScope     discount.IProductSpecificDiscountStrategy
+	DiscountScope     scope.IProductSpecificDiscountStrategy
 	StartDate         time.Time
 	ExpirationDate    time.Time
 	UsageLimit        int
@@ -61,28 +63,34 @@ type Config struct {
 
 func New(config Config) (*Coupon, error) {
 
-	CouponInstance := &Coupon{
-		uuid:              uuid.New(),
+	couponError := entity.Error("coupon")
+
+	nameErr := validateName(config.Name)
+	minPurchasedErr := validateMinPurchaseAllowed(config.MinPurchaseAmount)
+	startDateErr := validateStartDate(config.StartDate, config.ExpirationDate)
+	expirationDateErr := validateExpirationDate(config.StartDate, config.ExpirationDate)
+	discountScopeErr := validateDiscountInstance(config.DiscountScope)
+
+	couponError.
+		AddValidationError(nameErr).
+		AddValidationError(minPurchasedErr).
+		AddValidationError(startDateErr).
+		AddValidationError(expirationDateErr).
+		AddValidationError(discountScopeErr)
+
+	return &Coupon{
+		uuid:              *uuid.New(),
 		name:              config.Name,
 		minPurchaseAmount: config.MinPurchaseAmount,
 		discountScope:     config.DiscountScope,
 		expirationDate:    config.ExpirationDate,
-		usageLimit:        CouponUseLimit(config.UsageLimit), // TODO: validar
+		usageLimit:        UseLimit(config.UsageLimit), // TODO: validar
 		currentUsage:      0,
-		exclusivity:       CouponExclusivity(config.Exclusivity), // TODO: validar
-	}
-
-	err := CouponInstance.validate()
-	if err != nil {
-		return nil, err
-	}
-
-	return CouponInstance, nil
+		exclusivity:       Exclusivity(config.Exclusivity), // TODO: validar
+	}, nil
 }
 
-func (c *Coupon) UUID() string {
-	return c.uuid
-}
+func (c *Coupon) UUID() string { return c.uuid.String() }
 
 func (c *Coupon) Name() string {
 	return c.name
@@ -100,11 +108,11 @@ func (c *Coupon) ExpirationDate() time.Time {
 	return c.expirationDate
 }
 
-func (c *Coupon) UsageLimit() CouponUseLimit {
+func (c *Coupon) UsageLimit() UseLimit {
 	return c.usageLimit
 }
 
-func (c *Coupon) Exclusivity() CouponExclusivity {
+func (c *Coupon) Exclusivity() Exclusivity {
 	return c.exclusivity
 }
 
@@ -115,28 +123,32 @@ func (c *Coupon) IsUsable() bool {
 const (
 	ErrCouponUsageLimitExceeded  = "ERR_COUPON_USAGE_LIMIT_EXCEEDED"
 	ErrUserNotAllowedToUseCoupon = "ERR_USER_NOT_ALLOWED_TO_USE_COUPON"
+	ErrPurchasedAmountTooLow     = "ERR_PURCHASE_AMOUNT_TOO_LOW"
 )
 
-func (c *Coupon) Redeem(userRole role.Role, item product.IProduct, quantity int) (discount.DiscountSummary, error) {
+// Quando eu resgato um cupom, o cupom incide sobre um produto, todos os produtos uma categoria ou etc?
+// Como calcular???
+// E se produto for nil?
+// TODO: ajeitar os summary
+func (c *Coupon) Redeem(userRole role.Role, item product.IProduct, quantity int) (summary.Summary, error) {
 	if !c.IsUsable() {
-		return discount.DiscountSummary{}, &validate.FieldError{
+		return summary.Summary{}, &field.FieldError{
 			FieldName: "coupon",
 			CodeError: ErrCouponUsageLimitExceeded,
 		}
 	}
 
 	if isUserAllowed(c.exclusivity, userRole) {
-		return discount.DiscountSummary{}, &validate.FieldError{
+		return summary.Summary{}, &field.FieldError{
 			FieldName: "user_uuid",
 			CodeError: ErrUserNotAllowedToUseCoupon,
 		}
 	}
 
-	// TODO: implementar erro
 	if item.Price()*float64(quantity) < c.minPurchaseAmount {
-		// compra abaixo do mínimo para aplicabilidade do desconto
-		return discount.DiscountSummary{}, &validate.FieldError{
-			CodeError: "",
+		return summary.Summary{}, &field.FieldError{
+			FieldName: "coupon",
+			CodeError: "ErrPurchasedAmountTooLow",
 		}
 	}
 
@@ -144,49 +156,37 @@ func (c *Coupon) Redeem(userRole role.Role, item product.IProduct, quantity int)
 	if err == nil {
 		c.currentUsage++
 	}
-	return discountedAmount, err
+	return *discountedAmount, err
 }
 
 func (c *Coupon) IsProductValid(item product.IProduct) bool {
 	return c.discountScope.IsProductValid(item)
 }
 
-func (c *Coupon) validate() error {
-	couponError := validationerrors.New("Coupon")
-	couponError.
-		AddValidationError(validateName(c.name)).
-		AddValidationError(validateMinPurchaseAllowed(c.minPurchaseAmount)).
-		AddValidationError(validateStartDate(c.startDate, c.expirationDate)).
-		AddValidationError(validateExpirationDate(c.startDate, c.expirationDate)).
-		AddValidationError(validateDiscoutInstance(c.discountScope))
-
-	if couponError.HasError() {
-		return couponError
-	}
-	return nil
-}
-
 const (
-	minCouponNameLength = 4
-	maxCouponNameLength = 20
+	minNameLength = 4
+	maxNameLength = 20
 )
 
 func validateName(name string) error {
-	return validate.New("name", name,
+	return validate.New(
+		"name", name,
 		validate.IsBlank(),
-		validate.IsLengthInRange(minCouponNameLength, maxCouponNameLength),
+		validate.IsLengthInRange(minNameLength, maxNameLength),
 		validate.CheckSpecialChars(validate.Disallow),
 	)
 }
 
-const minAmount = 0
+const (
+	minAmount                  = 0
+	ErrMinimumPurchaseRequired = "ERR_MINIMUM_PURCHASE_REQUIRED"
+)
 
-// TODO: implementar erro
 func validateMinPurchaseAllowed(minPurchaseAmount float64) error {
 	if minPurchaseAmount < minAmount {
-		return &validate.FieldError{
+		return &field.FieldError{
 			FieldName: "discount",
-			CodeError: "",
+			CodeError: ErrMinimumPurchaseRequired,
 		}
 	}
 	return nil
@@ -202,34 +202,31 @@ func validateStartDate(startDate, expirationDate time.Time) error {
 }
 
 const (
-	minCouponValidityPeriod = 7 * 24 * time.Hour
-	maxCouponValidityPeriod = 365 * 24 * time.Hour
+	minValidityPeriod                  = 7 * 24 * time.Hour
+	maxValidityPeriod                  = 365 * 24 * time.Hour
+	ErrCouponExpirationBeforeStartDate = "ERR_COUPON_EXPIRATION_BEFORE_START_DATE"
+	ErrCouponExpirationExceedsMaxDate  = "ERR_COUPON_EXPIRATION_EXCEEDS_MAX_DATE"
 )
 
-// TODO: Implementar erro
-/*
-	A data de expiração deve ser no mínimo 7 dias a partir da data de inicio de validade do cupom
-	Já a data de expiração deve ser de no máximo 1 ano
-*/
+// Observar
 func validateExpirationDate(startDate, expirationDate time.Time) error {
 	return validate.New[time.Time](
 		"expiration_date", expirationDate,
-		validate.IsBeforeThan(startDate, ""),
-		validate.IsBeforeThan(time.Now().Add(minCouponValidityPeriod), ""),
-		validate.IsAfterThan(time.Now().Add(maxCouponValidityPeriod), ""),
+		validate.IsBeforeThan(startDate, ErrCouponExpirationBeforeStartDate),
+		validate.IsAfterThan(time.Now().Add(maxValidityPeriod), ErrCouponExpirationExceedsMaxDate),
 	)
 }
 
-func validateDiscoutInstance(discountInstance discount.IProductSpecificDiscountStrategy) error {
+func validateDiscountInstance(discountInstance scope.IProductSpecificDiscountStrategy) error {
 	return validate.New[any](
-		"discout", discountInstance,
+		"discount", discountInstance,
 		validate.IsNil(discountInstance),
 	)
 }
 
 // Refatorar
 // Code smells
-func isUserAllowed(exclusivity CouponExclusivity, userRole role.Role) bool {
+func isUserAllowed(exclusivity Exclusivity, userRole role.Role) bool {
 	switch exclusivity {
 	case AllCustomers:
 		return true

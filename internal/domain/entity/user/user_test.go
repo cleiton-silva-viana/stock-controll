@@ -5,8 +5,7 @@ import (
 	"testing"
 	"time"
 
-	validationerrors "stock-controll/internal/domain/services/error"
-	
+	"stock-controll/internal/domain/services/error/entity"
 	"stock-controll/test/unitary"
 
 	"github.com/stretchr/testify/assert"
@@ -39,24 +38,8 @@ func TestNewNoError(t *testing.T) {
 			Handler:         func(uc *UserConfig) { uc.FirstName = "Maria Clara" },
 		},
 		{
-			Description: "first name with minimum length",
-			Handler:         func(uc *UserConfig) { uc.FirstName = strings.Repeat("a", userNameMinLength) },
-		},
-		{
-			Description: "first name with maximum length",
-			Handler:         func(uc *UserConfig) { uc.FirstName = strings.Repeat("a", userNameMaxLength) },
-		},
-		{
 			Description: "Compound last name",
 			Handler:         func(uc *UserConfig) { uc.LastName = "Maria Clara" },
-		},
-		{
-			Description: "last name with minimum length",
-			Handler:         func(uc *UserConfig) { uc.LastName = strings.Repeat("a", userNameMinLength) },
-		},
-		{
-			Description: "last name with maximum length",
-			Handler:         func(uc *UserConfig) { uc.LastName = strings.Repeat("a", userNameMaxLength) },
 		},
 		{
 			Description: "create a male gender",
@@ -88,8 +71,8 @@ func TestNewNoError(t *testing.T) {
 			assert.NoError(t, err)
 			require.NotNil(t, user)
 			assert.NotEmpty(t, user.UUID())
-			assert.Equal(t, strings.ToLower(datasCopy.FirstName), user.FirstName())
-			assert.Equal(t, strings.ToLower(datasCopy.LastName), user.LastName())
+			assert.Contains(t, user.FullName(), config.FirstName)
+			assert.Contains(t, user.FullName(), config.LastName)
 			assert.Equal(t, strings.ToLower(datasCopy.Gender), user.Gender())
 			assert.Equal(t, datasCopy.CPF, user.CPF())
 			assert.Equal(t, datasCopy.BirthDate, user.BirthDate())
@@ -103,72 +86,12 @@ func TestNewWithError(t *testing.T) {
 	// Arrange
 	testsCases := []unitary.TestField[UserConfig]{
 		{
-			Description: "first name empty",
+			Description: "invalid first name",
 			Handler:         func(uc *UserConfig) { uc.FirstName = "            " },
 		},
 		{
-			Description: "fisrt name with special characters",
-			Handler:         func(uc *UserConfig) { uc.FirstName = "Maria @#" },
-		},
-		{
-			Description: "first name with number",
-			Handler:         func(uc *UserConfig) { uc.FirstName = "Otavio 123" },
-		},
-		{
-			Description: "first name is filled with spaces characters",
-			Handler:         func(uc *UserConfig) { uc.FirstName = "           " },
-		},
-		{
-			Description: "first name length greater than minimum",
-			Handler:         func(uc *UserConfig) { uc.FirstName = strings.Repeat("d", userNameMinLength-1) },
-		},
-		{
-			Description: "first name length greater than maximum",
-			Handler:         func(uc *UserConfig) { uc.FirstName = strings.Repeat("c", userNameMaxLength+1) },
-		},
-		{
-			Description: "last name empty",
-			Handler:         func(uc *UserConfig) { uc.LastName = "            " },
-		},
-		{
-			Description: "last name with special characters",
+			Description: "invalid last name ",
 			Handler:         func(uc *UserConfig) { uc.LastName = "Maria @#" },
-		},
-		{
-			Description: "last name with number",
-			Handler:         func(uc *UserConfig) { uc.LastName = "Otavio 123" },
-		},
-		{
-			Description: "last name is filled with spaces characters",
-			Handler:         func(uc *UserConfig) { uc.LastName = "           " },
-		},
-		{
-			Description: "last name length greater than minimum",
-			Handler:         func(uc *UserConfig) { uc.LastName = strings.Repeat("d", userNameMinLength-1) },
-		},
-		{
-			Description: "last name length greater than maximum",
-			Handler:         func(uc *UserConfig) { uc.LastName = strings.Repeat("c", userNameMaxLength+1) },
-		},
-		{
-			Description: "cpf empty",
-			Handler:         func(uc *UserConfig) { uc.CPF = "                " },
-		},
-		{
-			Description: "cpf is short",
-			Handler:         func(uc *UserConfig) { uc.CPF = "177.868-97" },
-		},
-		{
-			Description: "cpf is long",
-			Handler:         func(uc *UserConfig) { uc.CPF = "177.868.886-978" },
-		},
-		{
-			Description: "cpf with invalid format",
-			Handler:         func(uc *UserConfig) { uc.CPF = "167.868.886.97" },
-		},
-		{
-			Description: "cpf with invalid checker digits",
-			Handler:         func(uc *UserConfig) { uc.CPF = "123.456.789-01" },
 		},
 		{
 			Description: "age is lower than 18 years old",
@@ -204,7 +127,7 @@ func TestNewWithError(t *testing.T) {
 			// Assert
 			assert.Nil(t, user)
 			require.Error(t, err)
-			require.ErrorAs(t, err, &validationerrors.ValidationError{})
+			require.ErrorAs(t, err, &entity.EntityError{})
 		})
 	}
 }

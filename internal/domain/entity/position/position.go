@@ -1,54 +1,48 @@
 package position
 
 import (
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/error/entity"
 	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
 type Position struct {
-	uuid string
+	uuid uuid.UUID
 	name string
 }
 
 const (
-	minPositionNameLength = 6
-	maxPositionNameLength = 18
+	minNameLength = 6
+	maxNameLength = 18
 )
 
 func New(name string) (*Position, error) {
-	positionInstance := &Position{
-		uuid: uuid.New(),
-		name: "",
-	}
-
-	errs := validationerrors.
-		New("position").
-		AddValidationError(positionInstance.SetName(name))
+	errs := entity.Error("position").
+		AddValidationError(validateName(name))
 
 	if errs.HasError() {
 		return nil, errs
 	}
 
-	return positionInstance, nil
+	return &Position{
+		uuid: *uuid.New(),
+		name: name,
+	}, nil
 }
 
 func (p *Position) UUID() string {
-	return p.uuid
+	return p.uuid.String()
 }
 
 func (p *Position) Name() string {
 	return p.name
 }
 
-func (p *Position) SetName(name string) error {
-	err := validate.New("name", name,
+func validateName(name string) error {
+	return validate.New(
+		"name", name,
 		validate.IsBlank(),
-		validate.IsLengthInRange(minPositionNameLength, maxPositionNameLength),
+		validate.IsLengthInRange(minNameLength, maxNameLength),
 		validate.CheckNumbers(validate.Disallow),
 		validate.CheckSpecialChars(validate.Disallow))
-	if err == nil {
-		p.name = name
-	}
-	return err
 }

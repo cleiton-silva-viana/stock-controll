@@ -1,13 +1,14 @@
 package role
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"stock-controll/internal/domain/entity/permission"
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
-	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/services/error/field"
+	"stock-controll/internal/domain/valueobject/uuid"
 
 	"stock-controll/test/unitary"
 
@@ -20,41 +21,42 @@ var permission2, _ = permission.New("update")
 var permission3, _ = permission.New("delete")
 var permission4, _ = permission.New("view")
 
-var data = Role{
-	uuid: uuid.New(),
-	name: "admin",
-	permissions: map[string]permission.Permission{
-		permission1.UUID(): *permission1,
-		permission2.UUID(): *permission2,
-		permission3.UUID(): *permission3,
-	},
+func Setup() *Role {
+	return &Role{
+		uuid: *uuid.New(),
+		name: "admin",
+		permissions: map[string]permission.Permission{
+			permission1.UUID(): *permission1,
+			permission2.UUID(): *permission2,
+			permission3.UUID(): *permission3,
+		},
+	}
 }
 
 func TestNewNoError(t *testing.T) {
-	testsCases := []unitary.TestField[Role]{
+	tests := []unitary.TestField[Role]{
 		{
 			Description: "name with minimum allowed characters",
-			Handler:     func(r *Role) { r.name = strings.Repeat("a", minNameLengthForRole) },
+			Handler:     func(r *Role) { r.name = strings.Repeat("a", minLength) },
 		},
 		{
 			Description: "name with maximum allowed characters",
-			Handler:     func(r *Role) { r.name = strings.Repeat("b", maxNameLengthForRole) },
+			Handler:     func(r *Role) { r.name = strings.Repeat("b", maxLength) },
 		},
 	}
 
-	for _, tt := range testsCases {
-		t.Run(tt.Description, func(t *testing.T) {
-			dataCopy := data
-			tt.Handler(&dataCopy)
+	for _, tt := range tests {
+		t.Run(fmt.Sprint("Test function New role - no error expected - %s", tt.Description), func(t *testing.T) {
+			r := Setup()
+			tt.Handler(r)
 
 			// Act
-			role, err := New(dataCopy.name)
+			role, err := New(r.name)
 
 			// Assert
 			assert.NoError(t, err)
 			require.NotNil(t, role)
-			assert.NoError(t, uuid.IsValid("", role.UUID()))
-			assert.Equal(t, role.Name(), dataCopy.name)
+			assert.Equal(t, role.Name(), r.name)
 			assert.NotNil(t, role.Permissions())
 			assert.Empty(t, role.Permissions())
 		})
@@ -63,7 +65,7 @@ func TestNewNoError(t *testing.T) {
 
 func TestNewWithError(t *testing.T) {
 	// Arrange
-	testsCases := []unitary.TestField[Role]{
+	tests := []unitary.TestField[Role]{
 		{
 			Description: "role name is empty",
 			Handler:     func(r *Role) { r.name = "" },
@@ -74,45 +76,45 @@ func TestNewWithError(t *testing.T) {
 		},
 		{
 			Description: "role name is too shoort",
-			Handler:     func(r *Role) { r.name = strings.Repeat("a", minNameLengthForRole-1) },
+			Handler:     func(r *Role) { r.name = strings.Repeat("a", minLength-1) },
 		},
 		{
 			Description: "role name is too long",
-			Handler:     func(r *Role) { r.name = strings.Repeat("b", maxNameLengthForRole+1) },
+			Handler:     func(r *Role) { r.name = strings.Repeat("b", maxLength+1) },
 		},
 	}
 
-	for _, tt := range testsCases {
-		t.Run(tt.Description, func(t *testing.T) {
-			dataCopy := data
-			tt.Handler(&dataCopy)
+	for _, tt := range tests {
+		t.Run(fmt.Sprint("Test function New role - error expected because the %s", tt.Description), func(t *testing.T) {
+			// Arrange
+			r := Setup()
+			tt.Handler(r)
 
 			// Act
-			role, err := New(dataCopy.name)
-
+			role, err := New(r.name)
 			// Assert
 			assert.Nil(t, role)
 			require.Error(t, err)
-			assert.ErrorAs(t, err, &validationerrors.ValidationError{})
+			assert.ErrorAs(t, err, &entity.EntityError{})
 		})
 	}
 }
 
 func TestSetPermissionNoError(t *testing.T) {
 	// Arrange
-	role := data
+	r := Setup()
+	rr, _ := New(r.name)
 
 	// Act
-	err := role.SetPermission(*permission4)
+	err := rr.AddPermission(*permission4)
 
 	// Assert
 	assert.NoError(t, err)
-	assert.Contains(t, role.Permissions(), permission4)
-	assert.Len(t, role.Permissions(), 4)
+	assert.Contains(t, rr.Permissions(), permission4)
+	assert.Len(t, rr.Permissions(), 4)
 }
 
 func TestSetPermissionsWithError(t *testing.T) {
-	// Arrange
 	testCases := []unitary.TestDependence[permission.Permission]{
 		{
 			Description: "permissions is empty filled",
@@ -123,16 +125,18 @@ func TestSetPermissionsWithError(t *testing.T) {
 			Dependency:  *permission1,
 		},
 	}
-
+	
 	for _, test := range testCases {
+		// Arrange
 		t.Run(test.Description, func(t *testing.T) {
-			role := data
+			r := Setup()
+			rr, _ := New(r.name)
 			// Act
-			err := role.SetPermission(test.Dependency)
+			err := rr.AddPermission(test.Dependency)
 
 			// Assert
 			assert.Error(t, err)
-			assert.Len(t, role.Permissions(), 3)
+			assert.Len(t, rr.Permissions(), 3)
 		})
 	}
 }
@@ -140,21 +144,20 @@ func TestSetPermissionsWithError(t *testing.T) {
 func TestRemovePermissionNoError(t *testing.T) {
 	// Arrange
 	permissionUUID := permission1.UUID()
-	role := data
+	rr := Setup()
 
 	// Act
-	err := role.RemovePermission(permissionUUID)
+	err := rr.RemovePermission(permissionUUID)
 
 	// Assert
 	assert.NoError(t, err)
-	assert.NotContains(t, role.Permissions(), permission1)
-	assert.False(t, role.HasPermission(permissionUUID))
-	assert.Len(t, role.Permissions(), 2)
+	assert.NotContains(t, rr.Permissions(), permission1)
+	assert.False(t, rr.HasPermission(permissionUUID))
+	assert.Len(t, rr.Permissions(), 2)
 }
 
 func TestRemovePermissionWithError(t *testing.T) {
 	testCases := []unitary.TestDependence[permission.Permission]{
-		// Arrange
 		{
 			Description: "the permission not available in role",
 			Dependency:  *permission4,
@@ -169,16 +172,16 @@ func TestRemovePermissionWithError(t *testing.T) {
 		t.Run(test.Description, func(t *testing.T) {
 			// Arrange
 			permissionUUID := test.Dependency.UUID()
-			role := data
+			rr := Setup()
 
 			// Act
-			err := data.RemovePermission(permissionUUID)
+			err := rr.RemovePermission(permissionUUID)
 
 			// Assert
 			require.Error(t, err)
-			assert.ErrorIs(t, err, &validate.FieldError{})
-			assert.Len(t, role.Permissions(), 3)
-			assert.False(t, role.HasPermission(permissionUUID))
+			assert.ErrorIs(t, err, &field.FieldError{})
+			assert.Len(t, rr.Permissions(), 3)
+			assert.False(t, rr.HasPermission(permissionUUID))
 		})
 	}
 }

@@ -5,20 +5,20 @@ import (
 	"testing"
 	"time"
 
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/valueobject/uuid"
+
 	"stock-controll/test/unitary"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var product1 = uuid.New()
-var product2 = uuid.New()
-var product3 = uuid.New()
-var product4 = uuid.New()
+var product1 = uuid.New().String()
+var product2 = uuid.New().String()
+var product3 = uuid.New().String()
+var product4 = uuid.New().String()
 
 var data = Tag{
-	uuid:        "0192cf0f-ae3e-7784-b00f-d41a2347a2b8",
 	name:        "food",
 	description: "for foods products",
 	tagType:     Category,
@@ -36,7 +36,7 @@ func TestNewNoError(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	testCases := []unitary.TestField[Tag]{
+	tests := []unitary.TestField[Tag]{
 		{
 			Description: "name with minimun length allowed",
 			Handler:     func(t *Tag) { t.name = strings.Repeat("a", minNameLength) },
@@ -72,7 +72,7 @@ func TestNewNoError(t *testing.T) {
 		// TODO: testar tag type
 	}
 
-	for _, tt := range testCases {
+	for _, tt := range tests {
 		t.Run(tt.Description, func(t *testing.T) {
 			dataCopy := data
 			tt.Handler(&dataCopy)
@@ -86,7 +86,6 @@ func TestNewNoError(t *testing.T) {
 			assert.Equal(t, dataCopy.name, tag.Name())
 			assert.Equal(t, dataCopy.description, tag.Description())
 			assert.Equal(t, dataCopy.tagType, tag.TagType())
-			assert.NoError(t, uuid.IsValid("", tag.UUID()))
 			assert.LessOrEqual(t, time.Now(), tag.CreatedAt())
 			assert.LessOrEqual(t, time.Now(), tag.UpdatedAt())
 			require.NotNil(t, tag.AssociatedProductsUUIDs())
@@ -176,7 +175,7 @@ func TestAssociateProductsWithError(t *testing.T) {
 		},
 		{
 			Description: "product uuid equal than tag uuid",
-			Handler:     func(t *uuidtest) { t.uuid = data.uuid },
+			Handler:     func(t *uuidtest) { t.uuid = data.uuid.String() },
 		},
 		{
 			Description: "product uuid already registered in tag",

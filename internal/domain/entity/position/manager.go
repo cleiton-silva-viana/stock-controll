@@ -2,8 +2,8 @@ package position
 
 import (
 	"sync"
-	
-	"stock-controll/internal/domain/services/validate"
+
+	"stock-controll/internal/domain/services/error/field"
 )
 
 // Positions devem ser acessadas e criadas em tempo de execução
@@ -18,27 +18,27 @@ import (
 //     HumanResource.Key: HumanResource,
 // }
 
-type PositionManager struct {
+type Manager struct {
 	positions map[string]Position
 	mu        sync.RWMutex
 }
 
-func NewPositionManager() *PositionManager {
-	return &PositionManager{
+func NewManager() *Manager {
+	return &Manager{
 		positions: make(map[string]Position, 0),
 	}
 }
 
 // TODO: refatorar o erro
-func (pm *PositionManager) Position(uuid string) (*Position, error) {
+func (pm *Manager) Position(uuid string) (*Position, error) {
 	position, exists := pm.positions[uuid]
 	if !exists {
-		return nil, &validate.FieldError{}
+		return nil, &field.FieldError{}
 	}
 	return &position, nil
 }
 
-func (pm *PositionManager) ListPositions() []Position {
+func (pm *Manager) List() []Position {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 	positions := make([]Position, 0, len(pm.positions))
@@ -49,29 +49,29 @@ func (pm *PositionManager) ListPositions() []Position {
 }
 
 // TODO: refatorar o erro
-func (pm *PositionManager) RegisterPosition(position Position) error {
+func (pm *Manager) Register(position Position) error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	if _, exists := pm.positions[position.uuid]; !exists {
-		pm.positions[position.uuid] = position
+	if _, exists := pm.positions[position.uuid.String()]; !exists {
+		pm.positions[position.uuid.String()] = position
 		return nil
 	}
-	return &validate.FieldError{}
+	return &field.FieldError{}
 }
 
-func (pm *PositionManager) RemovePosition(uuid string) {
+func (pm *Manager) Remove(uuid string) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 	delete(pm.positions, uuid)
 }
 
 // TODO: refatorar o error
-func (pm *PositionManager) UpdatePosition(position Position) error {
+func (pm *Manager) Update(position Position) error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	if _, exists := pm.positions[position.uuid]; exists {
-		pm.positions[position.uuid] = position
+	if _, exists := pm.positions[position.uuid.String()]; exists {
+		pm.positions[position.uuid.String()] = position
 		return nil
 	}
-	return &validate.FieldError{}
+	return &field.FieldError{}
 }

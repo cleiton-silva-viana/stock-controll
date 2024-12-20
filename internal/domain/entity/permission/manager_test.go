@@ -1,14 +1,15 @@
 package permission
 
 import (
-	"stock-controll/internal/domain/services/uuid"
 	"strings"
 	"testing"
+
+	"stock-controll/internal/domain/valueobject/uuid"
 
 	"stock-controll/test/unitary"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require" 
 )
 
 func TestManagerNoError(t *testing.T) {
@@ -105,7 +106,7 @@ func Test_AddPermission_Error(t *testing.T) {
 }
 
 var permission1 = Permission{
-	uuid: uuid.New(),
+	uuid: *uuid.New(),
 	name: "create",
 }
 
@@ -116,7 +117,7 @@ func TestPermissionByIDNoError(t *testing.T) {
 	manager.AddPermission(&permission1)
 
 	// Act
-	permission, err := manager.PermissionByID(permission1.UUID())
+	permission, err := manager.PermissionByUID(permission1.UUID())
 
 	// Assert
 	assert.Nil(t, err)
@@ -129,7 +130,7 @@ func TestPermissionByIDWithError(t *testing.T) {
 	var manager = Manager()
 
 	// act
-	permission, err := manager.PermissionByID(permission1.UUID())
+	permission, err := manager.PermissionByUID(permission1.UUID())
 
 	// Assert
 	assert.Nil(t, permission)

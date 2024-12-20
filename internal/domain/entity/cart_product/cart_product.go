@@ -4,56 +4,11 @@ import (
 	"stock-controll/internal/domain/entity/coupon"
 	"stock-controll/internal/domain/entity/product"
 	"stock-controll/internal/domain/entity/promotion"
-	"stock-controll/internal/domain/services/discount"
-	validationerrors "stock-controll/internal/domain/services/error"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/services/error/field"
 	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/valueobject/discount"
 )
-
-/* {
-    "product": { ... },
-    "quantityPurchased": 10,
-    "appliedDiscounts": {
-        "retailDiscount": {
-            "minimumQuantityRequired": 6,
-            "discountStrategy": "fixedValue",
-            "discountAmount": 0.30,
-            "discountValue": 3.00,
-            "isApplied": true
-        },
-        "bulkDiscount": {
-            "type": "buy_X__Y",
-            "buyQuantity": 2,
-            "Quantity": 3,
-            "discountValue": 10.99,
-            "description": "Pague 3, leve 5",
-            "isActive": true
-        },
-    }
-    "couponDiscounts": [
-            {
-                "couponCode": "DISCOUNT10",
-                "discountStrategy": "fixedValue",
-                "discountAmount": 0.30,
-                "discountValue": 3.00,
-                "isApplied": true
-            },
-            {
-                "couponCode": "BIRTHDATE2024",
-                "discountStrategy": "percentage",
-                "discountAmount": 0.1,
-                "discountValue": 10.30,
-                "isApplied": true
-            }
-    ],
-    "totalAmount": {
-        "subtotal": 109.00,
-        "discountSummary": {
-            "totalDiscountApplied": 16.30,
-            "finalTotal": 92.70
-        }
-    }
-} */
-
 type TotalAmount struct {
 	subtotal float64
 	discount.DiscountSummary
@@ -68,10 +23,11 @@ type ProductCart struct {
 }
 
 func New(product product.IProduct) (*ProductCart, error) {
-	var productCartErrors = validationerrors.New("product_cart")
+	var productCartErrors = entity.Error("product_cart")
 
 	productCartErrors.AddValidationError(
-		validate.New[any]("cart_product", product,
+		validate.New[any](
+			"cart_product", product,
 			validate.IsNil(product),
 		),
 	)
@@ -120,14 +76,14 @@ func (pc *ProductCart) AppliedDiscount() []coupon.ICoupon {
 // TODO: Adicionar erro
 func (pc *ProductCart) AddPromotion(promo promotion.IPromotion) error {
 	if promo == nil {
-		return &validate.FieldError{
+		return &field.FieldError{
 			CodeError: "",
 		}
 	}
 
 	_, exists := pc.appliedPromotions[promo.UUID()]
 	if exists {
-		return &validate.FieldError{
+		return &field.FieldError{
 			CodeError: "",
 		}
 	}
@@ -138,7 +94,7 @@ func (pc *ProductCart) AddPromotion(promo promotion.IPromotion) error {
 	//		Inválidas para este produto
 	status := promo.Status()
 	if status != promotion.Scheduled && status != promotion.InProgress {
-		return &validate.FieldError{
+		return &field.FieldError{
 			CodeError: "",
 		}
 	}
@@ -148,7 +104,7 @@ func (pc *ProductCart) AddPromotion(promo promotion.IPromotion) error {
 
 func (pc *ProductCart) AddCoupon(coupon coupon.ICoupon) error {
 	if coupon == nil {
-		return &validate.FieldError{
+		return &field.FieldError{
 			CodeError: "",
 		}
 	}
@@ -156,7 +112,7 @@ func (pc *ProductCart) AddCoupon(coupon coupon.ICoupon) error {
 	// verificar se o cupon já está no map
 	_, exists := pc.appliedCoupons[coupon.UUID()]
 	if exists {
-		return &validate.FieldError{
+		return &field.FieldError{
 			CodeError: "",
 		}
 	}
@@ -227,3 +183,63 @@ func (pc *ProductCart) CalculateDiscount() {
 func (pc *ProductCart) CalculateCoupons() {}
 
 func (pc *ProductCart) CalculateTaxes() {}
+
+
+/*
+{
+    "products": {
+        "coca_cola_2l": {
+            "name": "coca-cola original 2l",
+            "quantity_purchased": 10,
+            "unit_price": 6.99,
+            "applied_discounts": {
+                "retail": {
+                    "rule_to_apply": {
+                        "min_quantity_required": 6
+                    },
+                    "discount": {
+                        "strategy": "percentage",
+                        "value": 0.5,
+                        "applied": 3.50
+                    },
+                    "total": {
+                        "with_discounts": 66.49,
+                        "without_discount": 66.99
+                    }
+                },
+                "bulk": {
+                    "rule_to_apply": {
+                        "description": "Buy 3, take 4",
+                        "min_quantity_required": 3
+                    },
+                    "discount": {
+                        "strategy": "buy_take",
+                        "applied": 13.98
+                    }
+                }
+            }
+        }
+    },
+    "coupons": [
+        {
+            "code": "DISCOUNT10",
+            "rule_to_apply": {
+                "description": ""
+            },
+            "discount": {
+                "strategy": "fixed_value",
+                "value": 0.30,
+                "applied": 3.00
+            }
+            
+        }
+    ],
+    "total_amount": {
+        "subtotal": 109.00,
+        "discount_summary": {
+            "total_discount_applied": 16.30,
+            "final_total": 92.70
+        }
+    }
+}
+*/

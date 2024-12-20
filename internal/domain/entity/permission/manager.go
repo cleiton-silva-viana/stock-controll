@@ -1,8 +1,9 @@
 package permission
 
 import (
-	"stock-controll/internal/domain/services/validate"
 	"sync"
+
+	"stock-controll/internal/domain/services/error/field"
 )
 
 var (
@@ -34,34 +35,30 @@ func (m *manager) HasPermissionByUUID(permissionUUID string) (*Permission, bool)
 
 const ErrPermissionAlreadyRegistered = "ERR_PERMISSION_ALREADY_REGISTERED"
 
-func (m *manager) AddPermission(newPermission *Permission) error {
-	permissionUUID := newPermission.UUID()
-
+func (m *manager) AddPermission(permission *Permission) error {
+	permissionUUID := permission.UUID()
 	_, exists := m.HasPermissionByUUID(permissionUUID)
 	if exists {
-		return &validate.FieldError{
+		return &field.FieldError{
 			FieldName: "uuid",
 			CodeError: ErrPermissionAlreadyRegistered,
 		}
 	}
-
-	m.permissions[permissionUUID] = newPermission
+	m.permissions[permissionUUID] = permission
 	return nil
 }
 
 const ErrPermissionNotFound = "ERR_PERMISSION_NOT_FOUND"
 
-func (m *manager) PermissionByID(permissionUUID string) (*Permission, error) {
+func (m *manager) PermissionByUID(permissionUUID string) (*Permission, error) {
 	permissionInstance, exists := m.HasPermissionByUUID(permissionUUID)
-
 	if !exists {
-		return nil, &validate.FieldError{
+		return nil, &field.FieldError{
 			// not found
 			FieldName: "permission_uuid",
 			CodeError: ErrPermissionNotFound,
 		}
 	}
-
 	return permissionInstance, nil
 }
 

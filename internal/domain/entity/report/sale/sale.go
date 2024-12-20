@@ -1,11 +1,15 @@
 package sale
 
+/*
+	A partir de R$2000 em compras, o cliente pessoa físicas deve ser obrigado a fornecer CPF
+*/
+
 import (
 	"time"
 
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
-	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/services/error/field"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
 type PaymentMethod string
@@ -52,9 +56,9 @@ type ISale interface {
 }
 
 type Sale struct {
-	uuid          string
-	sellerUUID    string
-	clientUUID    string
+	uuid          uuid.UUID
+	sellerUUID    uuid.UUID
+	clientUUID    uuid.UUID
 	discount      Discount
 	amount        float32
 	products      []Product
@@ -72,24 +76,28 @@ type Config struct {
 	Status        salesStatus
 }
 
-// TODO:  Adicionar validações para payment, discount, status e products
+/*
+TODO:  Adicionar validações para payment, discount, status e products
+
+Ao invés de paymentMethod, devemos receber um objeto do tipo payment
+E com base no status de pagamento, gerar o relatório
+Ou seja, se payment metho retornar um processing, já podemos gerar um relatório
+Tal abordagem evita que criemos um relatório para um evento nunca ocorrido
+ou um suposto evento futuro
+*/
 func New(config Config) (*Sale, error) {
-	var saleError = validationerrors.New("sale")
-	var saleInstance = Sale{
-		uuid:          uuid.New(),
-		clientUUID:    config.ClientUUID,
-		sellerUUID:    config.SellerUUID,
-		products:      config.Products,
-		paymentMethod: config.PaymentMethod,
-		discount:      config.Discount,
-		status:        config.Status,
-		timestamp:     time.Now(),
-	}
+	var saleError = entity.Error("sale")
+
+	// validar produtos
+	// validar método de pagamento
+	// validar discount
+	// validar status
+	clientVO, uuidClientErr := uuid.Parse("client_uuid", config.ClientUUID)
+	sellerVO, uuidSellerErr := uuid.Parse("seller_uuid", config.SellerUUID)
 
 	saleError.
-		AddValidationError(uuid.IsValid("client_uuid", config.ClientUUID)).
-		AddValidationError(uuid.IsValid("seller_uuid", config.SellerUUID)).
-		AddValidationError(saleInstance.validateProducts(config.Products))
+		AddValidationError(uuidClientErr).
+		AddValidationError(uuidSellerErr)
 
 	if saleError.HasError() {
 		return nil, saleError
@@ -97,15 +105,24 @@ func New(config Config) (*Sale, error) {
 
 	// Pensar em como gerar descontos
 
-	return &saleInstance, nil
+	return &Sale{
+		uuid:          *uuid.New(),
+		clientUUID:    *clientVO,
+		sellerUUID:    *sellerVO,
+		products:      config.Products,
+		paymentMethod: config.PaymentMethod,
+		discount:      config.Discount,
+		status:        config.Status,
+		timestamp:     time.Now(),
+	}, nil
 }
 
 func (s *Sale) SellerUUID() string {
-	return s.sellerUUID
+	return s.sellerUUID.String()
 }
 
 func (s *Sale) ClientUUID() string {
-	return s.clientUUID
+	return s.clientUUID.String()
 }
 
 func (s *Sale) Discount() Discount {
@@ -130,7 +147,7 @@ func (s *Sale) Amout() float32 {
 } */
 
 func (s *Sale) CalculateTotal() error {
-	
+	return nil
 }
 
 func (s *Sale) Products() []Product {
@@ -148,7 +165,7 @@ func (s *Sale) Status() string {
 // TODO: usar erro genérico para tratamento de erros de atribuíção de status
 func (s *Sale) SetStatus(newStatus salesStatus) error {
 	if s.status == newStatus {
-		return &validate.FieldError{
+		return &field.FieldError{
 			FieldName: "status",
 			CodeError: "",
 		}
@@ -166,7 +183,7 @@ const ErrNoProductsAssociated = "ERR_NO_PRODUCTS_ASSOCIATED"
 // TODO: melhorar checagem...
 func (s *Sale) validateProducts(products []Product) error {
 	if len(products) == 0 {
-		return &validate.FieldError{
+		return &field.FieldError{
 			FieldName: "products",
 			CodeError: ErrNoProductsAssociated,
 		}

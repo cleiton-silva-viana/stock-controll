@@ -13,9 +13,10 @@ mas os benefícios em termos de segurança, previsibilidade e facilidade de test
 import (
 	"time"
 
-	validationerrors "stock-controll/internal/domain/services/error"
-	"stock-controll/internal/domain/services/uuid"
+	"stock-controll/internal/domain/services/error/entity"
+	"stock-controll/internal/domain/services/error/field"
 	"stock-controll/internal/domain/services/validate"
+	"stock-controll/internal/domain/valueobject/uuid"
 )
 
 type DiscardStatus string
@@ -26,10 +27,10 @@ const (
 )
 
 type Discard struct {
-	uuid        string
-	checkerUUID string
-	productUUID string
-	batchUUID   string
+	uuid.UUID
+	checkerUUID uuid.UUID
+	productUUID uuid.UUID
+	batchUUID   uuid.UUID
 	quantity    int
 	createdAt   time.Time
 	heldIn      time.Time
@@ -37,52 +38,37 @@ type Discard struct {
 }
 
 const (
-	MinQuantity = 1
-	MaxQuantity = 1000
+	minQuantity = 1
+	maxQuantity = 1000
 )
 
-func NewDiscard(checkerUUID, productUUID, batchUUID string, quantity int) (*Discard, error) {
-	var discardError = validationerrors.New("discard").
-		AddValidationError(uuid.IsValid("checker_uuid", checkerUUID)).
-		AddValidationError(uuid.IsValid("product_uuid", productUUID)).
-		AddValidationError(uuid.IsValid("batch_uuid", batchUUID)).
-		AddValidationError(
-			validate.New[int](
-				"quantity",
-				quantity,
-				validate.IsInRange(MinQuantity, MaxQuantity),
-			),
-		)
+func New(checkerUUID, productUUID, batchUUID string, quantity int) (*Discard, error) {
+	var discardError = entity.Error("discard")
+
+	quantityErr := validateQuantity(quantity)
+	uuidChecker, uuidCheckerErr := uuid.Parse("checker_uuid", checkerUUID)
+	uuidProduct, uuidProcutErr := uuid.Parse("product_uuid", productUUID)
+	uuidBatch, uuidBatchErr := uuid.Parse("batch_uuid", batchUUID)
+
+	discardError.
+		AddValidationError(quantityErr).
+		AddValidationError(uuidCheckerErr).
+		AddValidationError(uuidProcutErr).
+		AddValidationError(uuidBatchErr)
 
 	if discardError.HasError() {
 		return nil, discardError
 	}
 
 	return &Discard{
-		uuid:        uuid.New(),
-		checkerUUID: checkerUUID,
-		productUUID: productUUID,
-		batchUUID:   batchUUID,
+		UUID:        *uuid.New(),
+		checkerUUID: *uuidChecker,
+		productUUID: *uuidProduct,
+		batchUUID:   *uuidBatch,
 		quantity:    quantity,
 		status:      toDo,
 		createdAt:   time.Now(),
 	}, nil
-}
-
-func (d *Discard) UUID() string {
-	return d.uuid
-}
-
-func (d *Discard) CheckerUUID() string {
-	return d.checkerUUID
-}
-
-func (d *Discard) ProductUUID() string {
-	return d.productUUID
-}
-
-func (d *Discard) BatchUUID() string {
-	return d.batchUUID
 }
 
 func (d *Discard) Quantity() int {
@@ -102,26 +88,33 @@ func (d *Discard) Status() DiscardStatus {
 }
 
 const (
-	ErrStatusChangeNotAllowed = "ERR_STATUS_CHANGE_NOT_ALLOWED"
+	ErrStatusChangeNotAllowed        = "ERR_STATUS_CHANGE_NOT_ALLOWED"
 	ErrInvalidDiscardOperationStatus = "ERR_INVALID_DISCARD_OPERATION_STATUS"
 )
 
-func (d *Discard) SetStatus(newStatus DiscardStatus) error {
+func (d *Discard) UpdateStatus(newStatus DiscardStatus) error {
 	if d.status == done {
-		return &validate.FieldError{
-			FieldName:  "status",
+		return &field.FieldError{
+			FieldName: "status",
 			CodeError: ErrStatusChangeNotAllowed,
 		}
 	}
 
-	if newStatus == done {
-		d.status = newStatus
-		d.heldIn = time.Now()
-		return nil
+	if newStatus != done {
+		return &field.FieldError{
+			FieldName: "status",
+			CodeError: ErrInvalidDiscardOperationStatus,
+		}
 	}
 
-	return &validate.FieldError{
-		FieldName:  "status",
-		CodeError: ErrInvalidDiscardOperationStatus, 
-	}
+	d.status = newStatus
+	d.heldIn = time.Now()
+	return nil
+}
+
+func validateQuantity(quantity int) error {
+	return validate.New[int](
+		"quantity", quantity,
+		validate.IsInRange(minQuantity, maxQuantity),
+	)
 }

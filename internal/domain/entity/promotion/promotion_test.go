@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
-	
-	"stock-controll/internal/domain/services/validate"
+
+	"stock-controll/internal/domain/services/error/field"
 
 	"stock-controll/test/unitary"
 
@@ -14,7 +14,6 @@ import (
 )
 
 var config = ConfigPromotion{
-	UUID:              "0192ca23-cdc3-7dca-b23d-9593d8333f4f",
 	Name:              "COUPON10",
 	Description:       "This promotion is destined for all employees and customers",
 	ExtendedPromotion: 0,
@@ -239,7 +238,7 @@ func TestPromotion_CancelPromotion_WithError(t *testing.T) {
 			err := dataCopy.CancelPromotion()
 
 			assert.Error(t, err)
-			assert.ErrorIs(t, err, &validate.FieldError{})
+			assert.ErrorIs(t, err, &field.FieldError{})
 			assert.Equal(t, data, dataCopy)
 		})
 	}
@@ -318,7 +317,7 @@ func TestPromotion_ExtendPromotionDate_WithError(t *testing.T) {
 
 			// Assert
 			require.Error(t, err)
-			assert.ErrorIs(t, err, &validate.FieldError{})
+			assert.ErrorIs(t, err, &field.FieldError{})
 			assert.Equal(t, data.EndDate(), dataCopy.EndDate())
 			assert.Equal(t, dataCopy.ExtendedPromotion(), 0)
 		})
